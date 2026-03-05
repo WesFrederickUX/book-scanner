@@ -3,103 +3,129 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Scanner Test</title>
+  <title>Book Scanner</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: Arial, sans-serif;
       background: #1a1a1a;
       color: #fff;
-      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px;
     }
-    h1 { color: #f57c00; margin-bottom: 20px; font-size: 1.2rem; }
-    .test { background: #2b2b2b; border-radius: 8px; padding: 14px; margin-bottom: 12px; }
-    .test h2 { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
-    .status { font-size: 0.85rem; }
-    .ok { color: #4caf50; }
-    .fail { color: #c62828; }
-    .pending { color: #888; }
+    h1 {
+      font-size: 1.2rem;
+      padding-bottom: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #f57c00;
+    }
+    #reader {
+      width: 100%;
+      max-width: 480px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 3px solid #f57c00;
+    }
+    #result-area {
+      width: 100%;
+      max-width: 480px;
+      margin-top: 20px;
+      background: #2b2b2b;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    #result-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    #result-code {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #4caf50;
+      letter-spacing: 2px;
+      min-height: 2rem;
+    }
+    #result-hint {
+      font-size: 0.85rem;
+      color: #555;
+      margin-top: 8px;
+    }
   </style>
 </head>
 <body>
-  <h1>📚 Browser Capability Test</h1>
-
-  <div class="test">
-    <h2>1. BarcodeDetector (Native)</h2>
-    <div class="status" id="s1">Checking...</div>
-  </div>
-
-  <div class="test">
-    <h2>2. Camera Access</h2>
-    <div class="status" id="s2">Checking...</div>
-  </div>
-
-  <div class="test">
-    <h2>3. Quagga Library</h2>
-    <div class="status" id="s3">Loading...</div>
-  </div>
-
-  <div class="test">
-    <h2>4. html5-qrcode Library</h2>
-    <div class="status" id="s4">Loading...</div>
-  </div>
-
-  <div class="test">
-    <h2>5. Browser Info</h2>
-    <div class="status" id="s5">Checking...</div>
+  <h1>📚 Book Scanner</h1>
+  <div id="reader"></div>
+  <div id="result-area">
+    <div id="result-label">Last Scanned</div>
+    <div id="result-code">—</div>
+    <div id="result-hint">Point camera at a barcode</div>
   </div>
 
   <script>
-    // 1. BarcodeDetector
-    document.getElementById('s1').textContent = ('BarcodeDetector' in window) ? '✅ Supported' : '❌ Not supported';
-    document.getElementById('s1').className = 'status ' + (('BarcodeDetector' in window) ? 'ok' : 'fail');
+    var resultCode = document.getElementById('result-code');
+    var resultHint = document.getElementById('result-hint');
+    var lastCode = '';
+    var lastTime = 0;
 
-    // 2. Camera
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-        .then(function(stream) {
-          stream.getTracks().forEach(function(t) { t.stop(); });
-          document.getElementById('s2').textContent = '✅ Camera access works';
-          document.getElementById('s2').className = 'status ok';
-        })
-        .catch(function(err) {
-          document.getElementById('s2').textContent = '❌ ' + err;
-          document.getElementById('s2').className = 'status fail';
-        });
-    } else {
-      document.getElementById('s2').textContent = '❌ getUserMedia not available';
-      document.getElementById('s2').className = 'status fail';
+    function beep() {
+      try {
+        var ac = new (window.AudioContext || window.webkitAudioContext)();
+        var osc = ac.createOscillator();
+        var gain = ac.createGain();
+        osc.connect(gain);
+        gain.connect(ac.destination);
+        osc.frequency.value = 1800;
+        gain.gain.value = 0.3;
+        osc.start();
+        osc.stop(ac.currentTime + 0.15);
+      } catch(e) {}
     }
 
-    // 3. Quagga
-    var q = document.createElement('script');
-    q.src = 'https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js';
-    q.onload = function() {
-      document.getElementById('s3').textContent = '✅ Loaded successfully';
-      document.getElementById('s3').className = 'status ok';
-    };
-    q.onerror = function() {
-      document.getElementById('s3').textContent = '❌ Failed to load';
-      document.getElementById('s3').className = 'status fail';
-    };
-    document.head.appendChild(q);
+    function onDetected(code) {
+      var now = Date.now();
+      if (code === lastCode && now - lastTime < 3000) return;
+      lastCode = code;
+      lastTime = now;
+      beep();
+      resultCode.textContent = code;
+      resultHint.textContent = 'Scanned — ready for next';
+    }
 
-    // 4. html5-qrcode
-    var h = document.createElement('script');
-    h.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
-    h.onload = function() {
-      document.getElementById('s4').textContent = '✅ Loaded successfully';
-      document.getElementById('s4').className = 'status ok';
-    };
-    h.onerror = function() {
-      document.getElementById('s4').textContent = '❌ Failed to load';
-      document.getElementById('s4').className = 'status fail';
-    };
-    document.head.appendChild(h);
+    var scanner = new Html5Qrcode('reader');
 
-    // 5. Browser info
-    document.getElementById('s5').textContent = navigator.userAgent;
-    document.getElementById('s5').className = 'status pending';
+    scanner.start(
+      { facingMode: 'environment' },
+      {
+        fps: 15,
+        qrbox: { width: 280, height: 120 },
+        aspectRatio: 1.8,
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39
+        ]
+      },
+      function(decodedText) {
+        onDetected(decodedText);
+      },
+      function(error) {
+        // silent
+      }
+    ).catch(function(err) {
+      resultHint.textContent = 'Camera error: ' + err;
+    });
   </script>
 </body>
 </html>
