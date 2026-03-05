@@ -732,6 +732,7 @@
       var isbn = document.getElementById('f-isbn').value.trim();
       var title = document.getElementById('f-title').value.trim();
       if (!title) { showToast('Title is required', 'error'); return; }
+      inventoryData = [];
 
       var item = {
         action: 'save',
