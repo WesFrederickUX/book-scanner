@@ -171,6 +171,9 @@
       color: var(--text);
     }
     #inv-search:focus { outline: none; border-color: var(--blue); }
+    #sort-bar { display: flex; gap: 8px; margin-top: 8px; }
+    .sort-btn { flex: 1; padding: 8px; border: none; border-radius: 8px; background: var(--light); color: var(--muted); font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; }
+    .sort-btn.active { background: var(--blue); color: #fff; }
     #inv-list { width: 100%; padding: 0 16px 80px; }
     .inv-row {
       background: var(--mid);
@@ -362,9 +365,17 @@
       <h2>📚 Inventory</h2>
       <span id="inv-count"></span>
     </div>
+  
     <div id="inv-search-wrap">
       <input type="text" id="inv-search" placeholder="🔍 Search title, ISBN, shelf..." oninput="filterInventory()"/>
+      <div id="sort-bar">
+        <button class="sort-btn active" onclick="sortInventory('title')">Title</button>
+        <button class="sort-btn" onclick="sortInventory('isbn')">ISBN</button>
+        <button class="sort-btn" onclick="sortInventory('shelf')">Shelf</button>
+        <button class="sort-btn" onclick="sortInventory('qty')">Qty</button>
+      </div>
     </div>
+    
     <div id="inv-list">
       <div id="inv-loading">Loading inventory...</div>
     </div>
@@ -500,6 +511,39 @@ function showScanner() {
         });
     }
 
+var sortField = 'title';
+    var sortAsc = true;
+
+    function sortInventory(field) {
+      if (sortField === field) {
+        sortAsc = !sortAsc;
+      } else {
+        sortField = field;
+        sortAsc = true;
+      }
+      document.querySelectorAll('.sort-btn').forEach(function(b) { b.classList.remove('active'); });
+      event.target.classList.add('active');
+      applySort();
+      renderInventory();
+    }
+    function applySort() {
+      filteredData.sort(function(a, b) {
+        var va, vb;
+        if (sortField === 'qty') {
+          va = Number(a.qty) || 0;
+          vb = Number(b.qty) || 0;
+        } else if (sortField === 'shelf') {
+          va = (String(a.bookcase || '') + String(a.shelf || '')).toLowerCase();
+          vb = (String(b.bookcase || '') + String(b.shelf || '')).toLowerCase();
+        } else {
+          va = String(a[sortField] || '').toLowerCase();
+          vb = String(b[sortField] || '').toLowerCase();
+        }
+        if (va < vb) return sortAsc ? -1 : 1;
+        if (va > vb) return sortAsc ? 1 : -1;
+        return 0;
+      });
+    }
     function filterInventory() {
       var q = document.getElementById('inv-search').value.toLowerCase().trim();
       if (!q) {
@@ -514,6 +558,7 @@ function showScanner() {
     }
 
     function renderInventory() {
+      applySort()
       var list = document.getElementById('inv-list');
       document.getElementById('inv-count').textContent = filteredData.length + ' items';
 
