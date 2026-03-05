@@ -110,16 +110,12 @@
           }
         },
         decoder: {
-          readers: [
-            'ean_reader',
-            'ean_8_reader',
-            'upc_reader',
-            'upc_e_reader',
-            'code_128_reader',
-            'code_39_reader'
-          ]
+          readers: ['ean_reader'],
+          multiple: false
         },
-        locate: true
+        locate: false,
+        numOfWorkers: 2,
+        frequency: 10
       }, function(err) {
         if (err) {
           statusEl.textContent = 'Init error: ' + err;
