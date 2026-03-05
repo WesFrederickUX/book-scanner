@@ -35,6 +35,8 @@
       text-transform: uppercase;
       color: var(--orange);
     }
+
+    /* ── SCANNER CONTAINER ── */
     #scanner-container {
       width: 100%;
       max-width: 480px;
@@ -44,6 +46,7 @@
       overflow: hidden;
       border: 3px solid var(--blue);
       max-height: 340px;
+      display: none;
     }
     #scanner-container video {
       width: 100%;
@@ -87,6 +90,63 @@
       width: 70%;
       opacity: 0.12;
     }
+
+    /* ── SCAN BUTTON AREA ── */
+    #scan-btn-area {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--mid);
+      border-radius: var(--radius);
+      border: 3px solid var(--blue);
+      padding: 40px 20px;
+      gap: 12px;
+    }
+    #scan-btn {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      border: none;
+      background: var(--blue);
+      color: #fff;
+      font-size: 2.4rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 20px rgba(21,101,192,0.5);
+    }
+    #scan-btn:active { transform: scale(0.95); }
+    #scan-btn-label {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--muted);
+    }
+
+    /* ── STOP SCAN BUTTON ── */
+    #stop-btn {
+      width: 100%;
+      max-width: 480px;
+      margin-top: 12px;
+      padding: 14px;
+      border: none;
+      border-radius: var(--radius);
+      background: var(--light);
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+      display: none;
+    }
+    #stop-btn:active { opacity: 0.7; }
+
+    /* ── RESULT BAR ── */
     #result-area {
       width: 100%;
       max-width: 480px;
@@ -115,6 +175,26 @@
       color: #555;
       margin-top: 6px;
     }
+
+    /* ── INVENTORY BUTTON ── */
+    #inventory-btn {
+      width: 100%;
+      max-width: 480px;
+      margin-top: 16px;
+      padding: 16px;
+      border: none;
+      border-radius: var(--radius);
+      background: var(--orange);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+    }
+    #inventory-btn:active { opacity: 0.8; }
+
+    /* ── MODAL ── */
     #modal-overlay {
       display: none;
       position: fixed;
@@ -324,6 +404,13 @@
 
   <h1>📚 Book Scanner</h1>
 
+  <!-- SCAN BUTTON (shown when camera is off) -->
+  <div id="scan-btn-area">
+    <button id="scan-btn" onclick="startScanner()">📷</button>
+    <div id="scan-btn-label">Tap to Scan</div>
+  </div>
+
+  <!-- CAMERA (shown when scanning) -->
   <div id="scanner-container">
     <video id="video" autoplay playsinline muted></video>
     <div id="target">
@@ -358,11 +445,18 @@
     </div>
   </div>
 
+  <!-- STOP SCANNING BUTTON -->
+  <button id="stop-btn" onclick="stopScanner()">✕ Stop Scanning</button>
+
+  <!-- RESULT BAR -->
   <div id="result-area">
     <div id="result-label">Last Scanned</div>
     <div id="result-code">—</div>
-    <div id="result-hint">Point camera at a barcode</div>
+    <div id="result-hint">Tap the button above to start scanning</div>
   </div>
+
+  <!-- VIEW INVENTORY BUTTON -->
+  <button id="inventory-btn" onclick="openInventory()">📊 View Inventory</button>
 
   <!-- MODAL -->
   <div id="modal-overlay">
@@ -371,22 +465,18 @@
         <span>📖 Book Details</span>
         <span id="modal-badge" class="new">NEW</span>
       </div>
-
       <div class="form-group">
         <label>ISBN / Barcode</label>
         <input type="text" id="f-isbn" readonly/>
       </div>
-
       <div class="form-group">
         <label>SKU</label>
         <input type="text" id="f-sku"/>
       </div>
-
       <div class="form-group">
         <label>Title</label>
         <input type="text" id="f-title" placeholder="Enter book title..."/>
       </div>
-
       <div class="form-group">
         <label>Quantity on Hand</label>
         <div class="qty-row">
@@ -395,7 +485,6 @@
           <button class="qty-btn" onclick="adjustQty(1)">+</button>
         </div>
       </div>
-
       <div class="form-row">
         <div class="form-group">
           <label>Bookcase</label>
@@ -418,7 +507,6 @@
           <input type="text" id="f-shelf" placeholder="e.g. 3"/>
         </div>
       </div>
-
       <div class="form-group">
         <label>Master Item</label>
         <div class="toggle-row">
@@ -429,12 +517,10 @@
           </label>
         </div>
       </div>
-
       <div class="form-group" id="masters-section">
         <label>Part of Master(s)</label>
         <div id="masters-list"><span class="no-masters">No master items found</span></div>
       </div>
-
       <div class="modal-actions">
         <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
         <button class="btn btn-save" onclick="saveItem()">Save</button>
@@ -445,7 +531,8 @@
   <div id="toast"></div>
 
   <script>
-    var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby4Ps4yOK7DOZ2F4QbT_BiT25S2oxRPO1FqFXNyp6RGqaN5nGLlaTed1wKC7q3NrMc9/exec';
+    var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyd6AsO636aObza0IWFyQLR_Nz2nVcnDrJoTJzYa49cqs-FYIfMqhRIXsuky_M29ryz/exec';
+    var SHEET_URL = 'https://docs.google.com/spreadsheets/d/1at5qF8A5RpxlCQO84euUoPLt6FX-p8REWF-q0FkvH3I/edit';
 
     var lastCode = '';
     var lastTime = 0;
@@ -453,14 +540,72 @@
     var selectedMasters = [];
     var db = {};
     var masterItems = [];
+    var scannerRunning = false;
 
-    // load masters from sheet on startup
+    // load masters on startup
     fetch(SCRIPT_URL + '?action=masters')
       .then(function(r) { return r.json(); })
       .then(function(data) { masterItems = data.masters || []; })
       .catch(function() {});
 
-    // ── SCANNER ───────────────────────────────────────────
+    // ── SCANNER CONTROLS ──────────────────────────────────
+    function startScanner() {
+      document.getElementById('scan-btn-area').style.display = 'none';
+      document.getElementById('scanner-container').style.display = 'block';
+      document.getElementById('stop-btn').style.display = 'block';
+      document.getElementById('result-hint').textContent = 'Point camera at a barcode';
+
+      if (scannerRunning) { Quagga.start(); return; }
+
+      Quagga.init({
+        inputStream: {
+          name: 'Live',
+          type: 'LiveStream',
+          target: document.getElementById('scanner-container'),
+          constraints: {
+            facingMode: 'environment',
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 }
+          },
+          area: { top: '20%', right: '10%', left: '10%', bottom: '20%' }
+        },
+        locator: { patchSize: 'medium', halfSample: false },
+        numOfWorkers: 4,
+        frequency: 20,
+        decoder: {
+          readers: ['ean_reader'],
+          debug: { drawBoundingBox: true, showFrequency: false, drawScanline: true, showPattern: false }
+        },
+        locate: true
+      }, function(err) {
+        if (err) {
+          document.getElementById('result-hint').textContent = 'Camera error: ' + err;
+          stopScanner();
+          return;
+        }
+        scannerRunning = true;
+        Quagga.start();
+      });
+
+      Quagga.onDetected(function(result) {
+        var code = result.codeResult.code;
+        if (code) onDetected(code);
+      });
+    }
+
+    function stopScanner() {
+      if (scannerRunning) Quagga.stop();
+      scannerRunning = false;
+      document.getElementById('scanner-container').style.display = 'none';
+      document.getElementById('stop-btn').style.display = 'none';
+      document.getElementById('scan-btn-area').style.display = 'flex';
+    }
+
+    function openInventory() {
+      window.open(SHEET_URL, '_blank');
+    }
+
+    // ── BEEP ──────────────────────────────────────────────
     function beep() {
       try {
         var ac = new (window.AudioContext || window.webkitAudioContext)();
@@ -475,28 +620,26 @@
       } catch(e) {}
     }
 
+    // ── DETECT ────────────────────────────────────────────
     function onDetected(code) {
       var now = Date.now();
       if (code === lastCode && now - lastTime < 5000) return;
       lastCode = code;
       lastTime = now;
       beep();
+      stopScanner();
       document.getElementById('result-code').textContent = code;
       document.getElementById('result-hint').textContent = 'Looking up...';
 
-      // check local cache first
       if (db[code]) {
         openModal(code, db[code]);
         return;
       }
 
-      // lookup from Google Sheets
       fetch(SCRIPT_URL + '?action=lookup&isbn=' + encodeURIComponent(code))
         .then(function(r) { return r.json(); })
         .then(function(data) {
-          if (data.found) {
-            db[code] = data;
-          }
+          if (data.found) db[code] = data;
           openModal(code, data.found ? data : null);
         })
         .catch(function() {
@@ -504,44 +647,10 @@
         });
     }
 
-    Quagga.init({
-      inputStream: {
-        name: 'Live',
-        type: 'LiveStream',
-        target: document.getElementById('scanner-container'),
-        constraints: {
-          facingMode: 'environment',
-          width: { min: 640, ideal: 1280, max: 1920 },
-          height: { min: 480, ideal: 720, max: 1080 }
-        },
-        area: { top: '20%', right: '10%', left: '10%', bottom: '20%' }
-      },
-      locator: { patchSize: 'medium', halfSample: false },
-      numOfWorkers: 4,
-      frequency: 20,
-      decoder: {
-        readers: ['ean_reader'],
-        debug: { drawBoundingBox: true, showFrequency: false, drawScanline: true, showPattern: false }
-      },
-      locate: true
-    }, function(err) {
-      if (err) {
-        document.getElementById('result-hint').textContent = 'Error: ' + err;
-        return;
-      }
-      Quagga.start();
-    });
-
-    Quagga.onDetected(function(result) {
-      var code = result.codeResult.code;
-      if (code) onDetected(code);
-    });
-
     // ── MODAL ─────────────────────────────────────────────
     function openModal(isbn, item) {
       currentISBN = isbn;
       selectedMasters = [];
-
       var isNew = !item;
 
       document.getElementById('f-isbn').value = isbn;
@@ -572,7 +681,7 @@
       document.getElementById('modal-overlay').classList.remove('show');
       currentISBN = '';
       selectedMasters = [];
-      document.getElementById('result-hint').textContent = 'Point camera at a barcode';
+      document.getElementById('result-hint').textContent = 'Tap the button above to start scanning';
     }
 
     function toggleMaster() {
@@ -589,34 +698,26 @@
       list.innerHTML = masterItems.map(function(m) {
         var sel = selectedMasters.indexOf(m.isbn) > -1;
         return '<div class="master-tag ' + (sel ? 'selected' : '') + '" onclick="toggleMasterTag(\'' + m.isbn + '\')">'
-          + (sel ? '✓ ' : '') + m.title
-          + '</div>';
+          + (sel ? '✓ ' : '') + m.title + '</div>';
       }).join('');
     }
 
     function toggleMasterTag(isbn) {
       var idx = selectedMasters.indexOf(isbn);
-      if (idx > -1) {
-        selectedMasters.splice(idx, 1);
-      } else {
-        selectedMasters.push(isbn);
-      }
+      if (idx > -1) { selectedMasters.splice(idx, 1); }
+      else { selectedMasters.push(isbn); }
       renderMastersList();
     }
 
     function adjustQty(delta) {
       var input = document.getElementById('f-qty');
-      var val = parseInt(input.value) || 0;
-      input.value = Math.max(0, val + delta);
+      input.value = Math.max(0, (parseInt(input.value) || 0) + delta);
     }
 
     function saveItem() {
       var isbn = document.getElementById('f-isbn').value.trim();
       var title = document.getElementById('f-title').value.trim();
-      if (!title) {
-        showToast('Title is required', 'error');
-        return;
-      }
+      if (!title) { showToast('Title is required', 'error'); return; }
 
       var item = {
         action: 'save',
@@ -630,10 +731,8 @@
         masters: selectedMasters.slice()
       };
 
-      // update local cache
       db[isbn] = item;
 
-      // update local masters list
       if (item.isMaster) {
         var exists = masterItems.some(function(m) { return m.isbn === isbn; });
         if (!exists) masterItems.push({ isbn: isbn, title: item.title });
@@ -643,7 +742,6 @@
 
       showToast('Saving...', '');
 
-      // save to Google Sheets
       fetch(SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
@@ -651,15 +749,10 @@
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        if (data.success) {
-          showToast('Saved!', 'success');
-        } else {
-          showToast('Save failed', 'error');
-        }
+        if (data.success) { showToast('Saved!', 'success'); }
+        else { showToast('Save failed', 'error'); }
       })
-      .catch(function() {
-        showToast('Connection error', 'error');
-      });
+      .catch(function() { showToast('Connection error', 'error'); });
 
       closeModal();
     }
