@@ -3,170 +3,103 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Book Scanner</title>
+  <title>Scanner Test</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: Arial, sans-serif;
       background: #1a1a1a;
       color: #fff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
+      padding: 20px;
     }
-    h1 {
-      font-size: 1.4rem;
-      padding: 16px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      color: #f57c00;
-    }
-    #scanner-container {
-      width: 100%;
-      max-width: 480px;
-      position: relative;
-      background: #000;
-    }
-    video {
-      width: 100%;
-      display: block;
-    }
-    canvas { display: none; }
-    #overlay {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 80%;
-      height: 30%;
-      border: 3px solid #4caf50;
-      border-radius: 6px;
-      pointer-events: none;
-    }
-    #flash {
-      position: absolute;
-      inset: 0;
-      background: #fff;
-      opacity: 0;
-      pointer-events: none;
-    }
-    #flash.active { opacity: 1; }
-    #scanned-badge {
-      position: absolute;
-      bottom: 16px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.75);
-      color: #4caf50;
-      font-size: 1rem;
-      font-weight: 700;
-      padding: 10px 20px;
-      border-radius: 30px;
-      white-space: nowrap;
-      opacity: 0;
-      pointer-events: none;
-    }
-    #scanned-badge.show { opacity: 1; }
+    h1 { color: #f57c00; margin-bottom: 20px; font-size: 1.2rem; }
+    .test { background: #2b2b2b; border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+    .test h2 { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .status { font-size: 0.85rem; }
+    .ok { color: #4caf50; }
+    .fail { color: #c62828; }
+    .pending { color: #888; }
   </style>
 </head>
 <body>
-  <h1>📚 Book Scanner</h1>
-  <div id="scanner-container">
-    <video id="video" autoplay playsinline muted></video>
-    <canvas id="canvas"></canvas>
-    <div id="overlay"></div>
-    <div id="flash"></div>
-    <div id="scanned-badge">—</div>
+  <h1>📚 Browser Capability Test</h1>
+
+  <div class="test">
+    <h2>1. BarcodeDetector (Native)</h2>
+    <div class="status" id="s1">Checking...</div>
+  </div>
+
+  <div class="test">
+    <h2>2. Camera Access</h2>
+    <div class="status" id="s2">Checking...</div>
+  </div>
+
+  <div class="test">
+    <h2>3. Quagga Library</h2>
+    <div class="status" id="s3">Loading...</div>
+  </div>
+
+  <div class="test">
+    <h2>4. html5-qrcode Library</h2>
+    <div class="status" id="s4">Loading...</div>
+  </div>
+
+  <div class="test">
+    <h2>5. Browser Info</h2>
+    <div class="status" id="s5">Checking...</div>
   </div>
 
   <script>
-    var video = document.getElementById('video');
-    var canvas = document.getElementById('canvas');
-    var ctx = canvas.getContext('2d');
-    var flash = document.getElementById('flash');
-    var badge = document.getElementById('scanned-badge');
-    var lastCode = '';
-    var lastTime = 0;
-    var badgeTimer = null;
+    // 1. BarcodeDetector
+    document.getElementById('s1').textContent = ('BarcodeDetector' in window) ? '✅ Supported' : '❌ Not supported';
+    document.getElementById('s1').className = 'status ' + (('BarcodeDetector' in window) ? 'ok' : 'fail');
 
-    function beep() {
-      try {
-        var ac = new (window.AudioContext || window.webkitAudioContext)();
-        var osc = ac.createOscillator();
-        var gain = ac.createGain();
-        osc.connect(gain);
-        gain.connect(ac.destination);
-        osc.frequency.value = 1800;
-        gain.gain.value = 0.3;
-        osc.start();
-        osc.stop(ac.currentTime + 0.15);
-      } catch(e) {}
-    }
-
-    function doFlash() {
-      flash.style.transition = 'none';
-      flash.classList.add('active');
-      setTimeout(function() {
-        flash.style.transition = 'opacity 0.15s ease-out';
-        flash.classList.remove('active');
-      }, 80);
-    }
-
-    function showBadge(code) {
-      badge.textContent = '✅ ' + code;
-      badge.classList.add('show');
-      clearTimeout(badgeTimer);
-      badgeTimer = setTimeout(function() { badge.classList.remove('show'); }, 2500);
-    }
-
-    function onDetected(code) {
-      var now = Date.now();
-      if (code === lastCode && now - lastTime < 3000) return;
-      lastCode = code;
-      lastTime = now;
-      beep();
-      doFlash();
-      showBadge(code);
-    }
-
-    if ('BarcodeDetector' in window) {
-      var detector = new BarcodeDetector({
-        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf']
-      });
-
-      navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-      }).then(function(stream) {
-        video.srcObject = stream;
-        video.play();
-
-        function tick() {
-          if (video.readyState === video.HAVE_ENOUGH_DATA) {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0);
-            detector.detect(canvas).then(function(barcodes) {
-              if (barcodes.length > 0) {
-                var best = barcodes[0];
-                for (var i = 0; i < barcodes.length; i++) {
-                  if (barcodes[i].format === 'ean_13') { best = barcodes[i]; break; }
-                }
-                onDetected(best.rawValue);
-              }
-            }).catch(function() {});
-          }
-          requestAnimationFrame(tick);
-        }
-        tick();
-
-      }).catch(function(err) {
-        document.body.innerHTML += '<p style="color:red;padding:20px;">Camera error: ' + err + '</p>';
-      });
-
+    // 2. Camera
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(function(stream) {
+          stream.getTracks().forEach(function(t) { t.stop(); });
+          document.getElementById('s2').textContent = '✅ Camera access works';
+          document.getElementById('s2').className = 'status ok';
+        })
+        .catch(function(err) {
+          document.getElementById('s2').textContent = '❌ ' + err;
+          document.getElementById('s2').className = 'status fail';
+        });
     } else {
-      document.body.innerHTML += '<p style="color:orange;padding:20px;">BarcodeDetector not supported on this browser.</p>';
+      document.getElementById('s2').textContent = '❌ getUserMedia not available';
+      document.getElementById('s2').className = 'status fail';
     }
+
+    // 3. Quagga
+    var q = document.createElement('script');
+    q.src = 'https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js';
+    q.onload = function() {
+      document.getElementById('s3').textContent = '✅ Loaded successfully';
+      document.getElementById('s3').className = 'status ok';
+    };
+    q.onerror = function() {
+      document.getElementById('s3').textContent = '❌ Failed to load';
+      document.getElementById('s3').className = 'status fail';
+    };
+    document.head.appendChild(q);
+
+    // 4. html5-qrcode
+    var h = document.createElement('script');
+    h.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+    h.onload = function() {
+      document.getElementById('s4').textContent = '✅ Loaded successfully';
+      document.getElementById('s4').className = 'status ok';
+    };
+    h.onerror = function() {
+      document.getElementById('s4').textContent = '❌ Failed to load';
+      document.getElementById('s4').className = 'status fail';
+    };
+    document.head.appendChild(h);
+
+    // 5. Browser info
+    document.getElementById('s5').textContent = navigator.userAgent;
+    document.getElementById('s5').className = 'status pending';
   </script>
 </body>
 </html>
