@@ -7,7 +7,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
   <style>
   * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
-    :root {h
+    :root {hh
       --orange: #f57c00;
       --blue: #1565c0;
       --green: #4caf50;
@@ -411,15 +411,15 @@
                   <div class="form-row">
                                   <div class="form-group">
                                                     <label>Loose Count</label>
-                                                  <input type="number" id="f-loose" value="0" min="0" inputmode="numeric" oninput="onLooseChange()"/>
+                                                  <input type="number" id="f-loose" value="" min="0" inputmode="numeric" oninput="onLooseChange()"/>
                                   </div>
                                 <div class="form-group">
                                                 <label>Boxes</label>
-                                                <input type="number" id="f-boxes" value="0" min="0" inputmode="numeric" oninput="onBoxFieldChange()"/>
+                                                <input type="number" id="f-boxes" value="" min="0" inputmode="numeric" oninput="onBoxFieldChange()"/>
                                 </div>
                                 <div class="form-group">
                                                 <label>Box Count</label>
-                                                <input type="number" id="f-boxcount" value="0" min="0" inputmode="numeric" oninput="onBoxFieldChange()"/>
+                                                <input type="number" id="f-boxcount" value="" min="0" inputmode="numeric" oninput="onBoxFieldChange()"/>
                                 </div>
                   </div>
       <div class="form-row">
@@ -744,9 +744,9 @@ var sortField = 'title';
       document.getElementById('f-sku').value = item ? (item.sku || isbn) : isbn;
       document.getElementById('f-title').value = item ? (item.title || '') : '';
       document.getElementById('f-qty').value = item ? (item.qty || 0) : 0;
-              document.getElementById('f-loose').value = item ? (item.looseCount || 0) : 0;
-              document.getElementById('f-boxes').value = item ? (item.boxes || 0) : 0;
-              document.getElementById('f-boxcount').value = item ? (item.boxCount || 0) : 0;
+              document.getElementById('f-loose').value = item ? (item.looseCount || '') : '';
+              document.getElementById('f-boxes').value = item ? (item.boxes || '') : '';
+              document.getElementById('f-boxcount').value = item ? (item.boxCount || '') : '';
       document.getElementById('f-bookcase').value = item ? (item.bookcase || '') : '';
       document.getElementById('f-shelf').value = item ? (item.shelf || '') : '';
       document.getElementById('f-master').checked = item ? (item.isMaster === true || item.isMaster === 'true' || item.isMaster === 'TRUE') : false;
