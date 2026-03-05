@@ -23,7 +23,7 @@
       text-transform: uppercase;
       color: #f57c00;
     }
-    #video-container {
+    #scanner-container {
       width: 100%;
       max-width: 480px;
       border-radius: 12px;
@@ -31,10 +31,14 @@
       border: 3px solid #f57c00;
       position: relative;
       background: #000;
+      min-height: 240px;
     }
-    video {
+    #scanner-container video {
       width: 100%;
       display: block;
+    }
+    #scanner-container canvas {
+      display: none;
     }
     #overlay {
       position: absolute;
@@ -42,8 +46,8 @@
       left: 50%;
       transform: translate(-50%, -50%);
       width: 70%;
-      height: 35%;
-      border: 3px solid #f57c00;
+      height: 40%;
+      border: 3px solid #4caf50;
       border-radius: 6px;
       pointer-events: none;
     }
@@ -66,91 +70,88 @@
     }
     #status {
       margin-top: 12px;
-      font-size: 0.8rem;
-      color: #666;
+      font-size: 0.85rem;
+      color: #888;
       text-align: center;
+      max-width: 480px;
+      word-break: break-all;
     }
   </style>
 </head>
 <body>
   <h1>📚 Book Scanner</h1>
-  <div id="video-container">
-    <video id="video" autoplay playsinline muted></video>
+  <div id="scanner-container">
     <div id="overlay"></div>
   </div>
   <div id="result">Point camera at a barcode...</div>
-  <div id="status">Starting camera...</div>
+  <div id="status">Loading...</div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
   <script>
-    var status = document.getElementById('status');
-    var result = document.getElementById('result');
+    var statusEl = document.getElementById('status');
+    var resultEl = document.getElementById('result');
     var lastCode = '';
     var lastTime = 0;
 
-    if (typeof ZXing === 'undefined') {
-      status.textContent = 'ZXing library failed to load';
+    if (typeof Quagga === 'undefined') {
+      statusEl.textContent = 'ERROR: Quagga library not loaded';
     } else {
-      status.textContent = 'ZXing loaded — starting camera...';
+      statusEl.textContent = 'Quagga loaded — starting camera...';
 
-      var hints = new Map();
-      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-        ZXing.BarcodeFormat.EAN_13,
-        ZXing.BarcodeFormat.EAN_8,
-        ZXing.BarcodeFormat.UPC_A,
-        ZXing.BarcodeFormat.UPC_E,
-        ZXing.BarcodeFormat.CODE_128,
-        ZXing.BarcodeFormat.CODE_39,
-        ZXing.BarcodeFormat.ITF
-      ]);
-      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-
-      var codeReader = new ZXing.BrowserMultiFormatReader(hints);
-
-      codeReader.listVideoInputDevices().then(function(devices) {
-        status.textContent = 'Found ' + devices.length + ' camera(s)';
-
-        // prefer back camera
-        var deviceId = devices[0] && devices[0].deviceId;
-        for (var i = 0; i < devices.length; i++) {
-          if (devices[i].label.toLowerCase().indexOf('back') > -1 ||
-              devices[i].label.toLowerCase().indexOf('rear') > -1 ||
-              devices[i].label.toLowerCase().indexOf('environment') > -1) {
-            deviceId = devices[i].deviceId;
-            break;
+      Quagga.init({
+        inputStream: {
+          name: 'Live',
+          type: 'LiveStream',
+          target: document.getElementById('scanner-container'),
+          constraints: {
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
           }
+        },
+        decoder: {
+          readers: [
+            'ean_reader',
+            'ean_8_reader',
+            'upc_reader',
+            'upc_e_reader',
+            'code_128_reader',
+            'code_39_reader'
+          ]
+        },
+        locate: true
+      }, function(err) {
+        if (err) {
+          statusEl.textContent = 'Init error: ' + err;
+          return;
         }
+        statusEl.textContent = 'Camera ready — scanning...';
+        Quagga.start();
+      });
 
-        codeReader.decodeFromVideoDevice(deviceId, 'video', function(res, err) {
-          if (res) {
-            var code = res.getText();
-            var now = Date.now();
-            if (code === lastCode && now - lastTime < 3000) return;
-            lastCode = code;
-            lastTime = now;
-            result.textContent = '✅ ' + code;
-            result.className = 'found';
-            status.textContent = 'Scanned!';
-            // beep
-            try {
-              var ctx = new (window.AudioContext || window.webkitAudioContext)();
-              var osc = ctx.createOscillator();
-              var gain = ctx.createGain();
-              osc.connect(gain);
-              gain.connect(ctx.destination);
-              osc.frequency.value = 1800;
-              gain.gain.value = 0.3;
-              osc.start();
-              osc.stop(ctx.currentTime + 0.15);
-            } catch(e) {}
-          }
-          if (err && !(err instanceof ZXing.NotFoundException)) {
-            status.textContent = 'Error: ' + err;
-          }
-        });
+      Quagga.onDetected(function(data) {
+        var code = data.codeResult.code;
+        var now = Date.now();
+        if (code === lastCode && now - lastTime < 3000) return;
+        lastCode = code;
+        lastTime = now;
 
-      }).catch(function(err) {
-        status.textContent = 'Camera error: ' + err;
+        resultEl.textContent = '✅ ' + code;
+        resultEl.className = 'found';
+        statusEl.textContent = 'Scanned successfully!';
+
+        // beep
+        try {
+          var ctx = new (window.AudioContext || window.webkitAudioContext)();
+          var osc = ctx.createOscillator();
+          var gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = 1800;
+          gain.gain.value = 0.3;
+          osc.start();
+          osc.stop(ctx.currentTime + 0.15);
+        } catch(e) {}
       });
     }
   </script>
