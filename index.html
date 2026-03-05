@@ -23,12 +23,29 @@
       text-transform: uppercase;
       color: #f57c00;
     }
-    #reader {
+    #video-container {
       width: 100%;
       max-width: 480px;
       border-radius: 12px;
       overflow: hidden;
       border: 3px solid #f57c00;
+      position: relative;
+      background: #000;
+    }
+    video {
+      width: 100%;
+      display: block;
+    }
+    #overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 70%;
+      height: 35%;
+      border: 3px solid #f57c00;
+      border-radius: 6px;
+      pointer-events: none;
     }
     #result {
       margin-top: 24px;
@@ -47,51 +64,95 @@
       font-weight: 700;
       font-size: 1.3rem;
     }
+    #status {
+      margin-top: 12px;
+      font-size: 0.8rem;
+      color: #666;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
   <h1>📚 Book Scanner</h1>
-  <div id="reader"></div>
+  <div id="video-container">
+    <video id="video" autoplay playsinline muted></video>
+    <div id="overlay"></div>
+  </div>
   <div id="result">Point camera at a barcode...</div>
+  <div id="status">Starting camera...</div>
 
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
   <script>
+    var status = document.getElementById('status');
+    var result = document.getElementById('result');
     var lastCode = '';
     var lastTime = 0;
 
-    var scanner = new Html5Qrcode('reader');
+    if (typeof ZXing === 'undefined') {
+      status.textContent = 'ZXing library failed to load';
+    } else {
+      status.textContent = 'ZXing loaded — starting camera...';
 
-    scanner.start(
-      { facingMode: 'environment' },
-      {
-        fps: 15,
-        qrbox: { width: 300, height: 150 },
-        aspectRatio: 1.5,
-        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.CODE_39
-        ]
-      },
-      function(decodedText) {
-        var now = Date.now();
-        if (decodedText === lastCode && now - lastTime < 3000) return;
-        lastCode = decodedText;
-        lastTime = now;
-        var result = document.getElementById('result');
-        result.textContent = '✅ ' + decodedText;
-        result.className = 'found';
-      },
-      function(error) {
-        // silent — scanning continuously
-      }
-    ).catch(function(err) {
-      document.getElementById('result').textContent = 'Camera error: ' + err;
-    });
+      var hints = new Map();
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+        ZXing.BarcodeFormat.EAN_13,
+        ZXing.BarcodeFormat.EAN_8,
+        ZXing.BarcodeFormat.UPC_A,
+        ZXing.BarcodeFormat.UPC_E,
+        ZXing.BarcodeFormat.CODE_128,
+        ZXing.BarcodeFormat.CODE_39,
+        ZXing.BarcodeFormat.ITF
+      ]);
+      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+
+      var codeReader = new ZXing.BrowserMultiFormatReader(hints);
+
+      codeReader.listVideoInputDevices().then(function(devices) {
+        status.textContent = 'Found ' + devices.length + ' camera(s)';
+
+        // prefer back camera
+        var deviceId = devices[0] && devices[0].deviceId;
+        for (var i = 0; i < devices.length; i++) {
+          if (devices[i].label.toLowerCase().indexOf('back') > -1 ||
+              devices[i].label.toLowerCase().indexOf('rear') > -1 ||
+              devices[i].label.toLowerCase().indexOf('environment') > -1) {
+            deviceId = devices[i].deviceId;
+            break;
+          }
+        }
+
+        codeReader.decodeFromVideoDevice(deviceId, 'video', function(res, err) {
+          if (res) {
+            var code = res.getText();
+            var now = Date.now();
+            if (code === lastCode && now - lastTime < 3000) return;
+            lastCode = code;
+            lastTime = now;
+            result.textContent = '✅ ' + code;
+            result.className = 'found';
+            status.textContent = 'Scanned!';
+            // beep
+            try {
+              var ctx = new (window.AudioContext || window.webkitAudioContext)();
+              var osc = ctx.createOscillator();
+              var gain = ctx.createGain();
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              osc.frequency.value = 1800;
+              gain.gain.value = 0.3;
+              osc.start();
+              osc.stop(ctx.currentTime + 0.15);
+            } catch(e) {}
+          }
+          if (err && !(err instanceof ZXing.NotFoundException)) {
+            status.textContent = 'Error: ' + err;
+          }
+        });
+
+      }).catch(function(err) {
+        status.textContent = 'Camera error: ' + err;
+      });
+    }
   </script>
 </body>
 </html>
