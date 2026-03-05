@@ -106,7 +106,7 @@
 
     function onDetected(code) {
       var now = Date.now();
-      if (code === lastCode && now - lastTime < 3000) return;
+      if (code === lastCode && now - lastTime < 1500) return;
       lastCode = code;
       lastTime = now;
       beep();
@@ -158,11 +158,7 @@
 
     Quagga.onDetected(function(result) {
       var code = result.codeResult.code;
-      var confidence = result.codeResult.decodedCodes
-        .filter(function(x) { return x.error !== undefined; })
-        .reduce(function(acc, x) { return acc + x.error; }, 0);
-      // only accept high confidence reads
-      if (confidence < 0.15) {
+      if (code) {
         onDetected(code);
       }
     });
