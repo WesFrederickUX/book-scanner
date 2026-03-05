@@ -13,68 +13,85 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-height: 100vh;
-      padding: 20px;
+      height: 100vh;
+      overflow: hidden;
     }
     h1 {
-      font-size: 1.4rem;
-      margin-bottom: 20px;
+      font-size: 1.2rem;
+      padding: 12px;
       letter-spacing: 2px;
       text-transform: uppercase;
       color: #f57c00;
+      flex-shrink: 0;
     }
     #scanner-container {
       width: 100%;
       max-width: 480px;
-      border-radius: 12px;
-      overflow: hidden;
-      border: 3px solid #f57c00;
+      height: 50vh;
       position: relative;
       background: #000;
-      min-height: 240px;
+      overflow: hidden;
+      border-top: 3px solid #f57c00;
+      border-bottom: 3px solid #f57c00;
+      flex-shrink: 0;
     }
     video {
       width: 100%;
+      height: 100%;
+      object-fit: cover;
       display: block;
     }
-    canvas {
-      display: none;
-    }
+    canvas { display: none; }
     #overlay {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 80%;
+      width: 85%;
       height: 35%;
       border: 3px solid #4caf50;
       border-radius: 6px;
       pointer-events: none;
     }
-    #result {
-      margin-top: 24px;
+    #flash {
+      position: absolute;
+      inset: 0;
+      background: #fff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.05s ease-in;
+    }
+    #flash.active { opacity: 1; }
+
+    #result-area {
       width: 100%;
       max-width: 480px;
-      background: #2b2b2b;
-      border-radius: 12px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       padding: 20px;
-      font-size: 1.1rem;
-      min-height: 60px;
-      text-align: center;
-      color: #aaa;
+      gap: 12px;
     }
-    #result.found {
-      color: #4caf50;
+    #result-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #666;
+    }
+    #result-code {
+      font-size: 1.6rem;
       font-weight: 700;
-      font-size: 1.3rem;
-    }
-    #status {
-      margin-top: 12px;
-      font-size: 0.85rem;
-      color: #888;
+      color: #4caf50;
+      letter-spacing: 2px;
+      min-height: 2rem;
       text-align: center;
-      max-width: 480px;
-      word-break: break-all;
+    }
+    #result-hint {
+      font-size: 0.85rem;
+      color: #555;
+      text-align: center;
     }
   </style>
 </head>
@@ -84,19 +101,23 @@
     <video id="video" autoplay playsinline muted></video>
     <canvas id="canvas"></canvas>
     <div id="overlay"></div>
+    <div id="flash"></div>
   </div>
-  <div id="result">Point camera at a barcode...</div>
-  <div id="status">Starting...</div>
+  <div id="result-area">
+    <div id="result-label">Last Scanned</div>
+    <div id="result-code">—</div>
+    <div id="result-hint">Point camera at a barcode</div>
+  </div>
 
   <script>
-    var statusEl = document.getElementById('status');
-    var resultEl = document.getElementById('result');
     var video = document.getElementById('video');
     var canvas = document.getElementById('canvas');
     var ctx = canvas.getContext('2d');
+    var flash = document.getElementById('flash');
+    var resultCode = document.getElementById('result-code');
+    var resultHint = document.getElementById('result-hint');
     var lastCode = '';
     var lastTime = 0;
-    var scanning = false;
 
     function beep() {
       try {
@@ -112,21 +133,23 @@
       } catch(e) {}
     }
 
+    function doFlash() {
+      flash.classList.add('active');
+      setTimeout(function() { flash.classList.remove('active'); }, 150);
+    }
+
     function onDetected(code) {
       var now = Date.now();
       if (code === lastCode && now - lastTime < 3000) return;
       lastCode = code;
       lastTime = now;
-      resultEl.textContent = '✅ ' + code;
-      resultEl.className = 'found';
-      statusEl.textContent = 'Scanned!';
       beep();
+      doFlash();
+      resultCode.textContent = code;
+      resultHint.textContent = 'Scanned — ready for next';
     }
 
-    // Try native BarcodeDetector first
     if ('BarcodeDetector' in window) {
-      statusEl.textContent = 'Using native BarcodeDetector...';
-
       var detector = new BarcodeDetector({
         formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf']
       });
@@ -136,7 +159,6 @@
       }).then(function(stream) {
         video.srcObject = stream;
         video.play();
-        statusEl.textContent = 'Camera ready — scanning...';
 
         function tick() {
           if (video.readyState === video.HAVE_ENOUGH_DATA) {
@@ -145,7 +167,6 @@
             ctx.drawImage(video, 0, 0);
             detector.detect(canvas).then(function(barcodes) {
               if (barcodes.length > 0) {
-                // prefer EAN-13
                 var best = barcodes[0];
                 for (var i = 0; i < barcodes.length; i++) {
                   if (barcodes[i].format === 'ean_13') { best = barcodes[i]; break; }
@@ -159,44 +180,11 @@
         tick();
 
       }).catch(function(err) {
-        statusEl.textContent = 'Camera error: ' + err;
+        resultHint.textContent = 'Camera error: ' + err;
       });
 
     } else {
-      // Fallback to Quagga
-      statusEl.textContent = 'Native API not available — loading Quagga...';
-
-      var script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js';
-      script.onload = function() {
-        statusEl.textContent = 'Quagga loaded — starting...';
-        Quagga.init({
-          inputStream: {
-            name: 'Live',
-            type: 'LiveStream',
-            target: document.getElementById('scanner-container'),
-            constraints: { facingMode: 'environment' }
-          },
-          decoder: {
-            readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'code_128_reader'],
-            multiple: false
-          },
-          locate: false,
-          numOfWorkers: 2,
-          frequency: 10
-        }, function(err) {
-          if (err) { statusEl.textContent = 'Quagga error: ' + err; return; }
-          statusEl.textContent = 'Camera ready — scanning...';
-          Quagga.start();
-        });
-        Quagga.onDetected(function(data) {
-          onDetected(data.codeResult.code);
-        });
-      };
-      script.onerror = function() {
-        statusEl.textContent = 'All libraries failed to load';
-      };
-      document.head.appendChild(script);
+      resultHint.textContent = 'BarcodeDetector not supported on this browser.';
     }
   </script>
 </body>
