@@ -35,8 +35,6 @@
       text-transform: uppercase;
       color: var(--orange);
     }
-
-    /* ── SCANNER ── */
     #scanner-container {
       width: 100%;
       max-width: 480px;
@@ -89,8 +87,6 @@
       width: 70%;
       opacity: 0.12;
     }
-
-    /* ── RESULT BAR ── */
     #result-area {
       width: 100%;
       max-width: 480px;
@@ -119,8 +115,6 @@
       color: #555;
       margin-top: 6px;
     }
-
-    /* ── MODAL OVERLAY ── */
     #modal-overlay {
       display: none;
       position: fixed;
@@ -130,11 +124,7 @@
       align-items: flex-end;
       justify-content: center;
     }
-    #modal-overlay.show {
-      display: flex;
-    }
-
-    /* ── MODAL SHEET ── */
+    #modal-overlay.show { display: flex; }
     #modal {
       background: var(--mid);
       border-radius: 20px 20px 0 0;
@@ -163,7 +153,6 @@
     }
     #modal-badge.new { background: #1565c0; color: #fff; }
     #modal-badge.existing { background: #6a1b9a; color: #fff; }
-
     .form-group {
       display: flex;
       flex-direction: column;
@@ -187,7 +176,8 @@
       background: var(--light);
       color: var(--text);
     }
-    .form-group input:focus {
+    .form-group input:focus,
+    .form-group select:focus {
       outline: none;
       border-color: var(--blue);
     }
@@ -200,8 +190,6 @@
       grid-template-columns: 1fr 1fr;
       gap: 12px;
     }
-
-    /* qty row */
     .qty-row {
       display: flex;
       align-items: center;
@@ -233,8 +221,6 @@
       text-align: center;
     }
     .qty-row input:focus { outline: none; border-color: var(--blue); }
-
-    /* toggle */
     .toggle-row {
       display: flex;
       align-items: center;
@@ -243,9 +229,7 @@
       border-radius: 8px;
       padding: 12px 14px;
     }
-    .toggle-label {
-      font-size: 0.95rem;
-    }
+    .toggle-label { font-size: 0.95rem; }
     .toggle {
       position: relative;
       width: 48px;
@@ -274,8 +258,6 @@
       transition: left 0.2s;
     }
     .toggle input:checked + .toggle-track::after { left: 25px; }
-
-    /* masters multi-select */
     #masters-section { display: block; }
     #masters-list {
       display: flex;
@@ -297,17 +279,8 @@
       cursor: pointer;
       user-select: none;
     }
-    .master-tag.selected {
-      background: var(--blue);
-      color: #fff;
-    }
-    .no-masters {
-      font-size: 0.82rem;
-      color: var(--muted);
-      font-style: italic;
-    }
-
-    /* modal actions */
+    .master-tag.selected { background: var(--blue); color: #fff; }
+    .no-masters { font-size: 0.82rem; color: var(--muted); font-style: italic; }
     .modal-actions {
       display: flex;
       gap: 12px;
@@ -327,8 +300,6 @@
     .btn:active { opacity: 0.8; }
     .btn-save { background: var(--green); color: #fff; }
     .btn-cancel { background: var(--light); color: var(--muted); }
-
-    /* toast */
     #toast {
       position: fixed;
       bottom: 24px;
@@ -428,19 +399,19 @@
       <div class="form-row">
         <div class="form-group">
           <label>Bookcase</label>
-           <select id="f-bookcase">
-                <option value="">— Select Bookcase —</option>
-                <option value="Corwin">Corwin</option>
-                <option value="Heinemann">Heinemann</option>
-                <option value="Bernabei">Bernabei</option>
-                <option value="ASCD">ASCD</option>
-                <option value="JWJB">JWJB</option>
-                <option value="Palmetto">Palmetto</option>
-                <option value="Scholastic">Scholastic</option>
-                <option value="Schuster">Schuster</option>
-                <option value="Routledge">Routledge</option>
-                <option value="Misc">Misc</option>
-            </select>
+          <select id="f-bookcase">
+            <option value="">— Select —</option>
+            <option value="Corwin">Corwin</option>
+            <option value="Heinemann">Heinemann</option>
+            <option value="Bernabei">Bernabei</option>
+            <option value="ASCD">ASCD</option>
+            <option value="JWJB">JWJB</option>
+            <option value="Palmetto">Palmetto</option>
+            <option value="Scholastic">Scholastic</option>
+            <option value="Schuster">Schuster</option>
+            <option value="Routledge">Routledge</option>
+            <option value="Misc">Misc</option>
+          </select>
         </div>
         <div class="form-group">
           <label>Shelf</label>
@@ -474,16 +445,20 @@
   <div id="toast"></div>
 
   <script>
-    // ── STATE ──────────────────────────────────────────────
+    var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzoLclIaJ_QacUzV_4HnbqsCTo5oqyWBEF--RREiUMZG8y0FF70cHmW-U89m014eX-V/exec';
+
     var lastCode = '';
     var lastTime = 0;
     var currentISBN = '';
     var selectedMasters = [];
-
-    // placeholder database — will be replaced with Google Sheets
     var db = {};
-    // placeholder masters list — will come from Google Sheets
     var masterItems = [];
+
+    // load masters from sheet on startup
+    fetch(SCRIPT_URL + '?action=masters')
+      .then(function(r) { return r.json(); })
+      .then(function(data) { masterItems = data.masters || []; })
+      .catch(function() {});
 
     // ── SCANNER ───────────────────────────────────────────
     function beep() {
@@ -507,8 +482,26 @@
       lastTime = now;
       beep();
       document.getElementById('result-code').textContent = code;
-      document.getElementById('result-hint').textContent = 'Scanned — opening details...';
-      setTimeout(function() { openModal(code); }, 300);
+      document.getElementById('result-hint').textContent = 'Looking up...';
+
+      // check local cache first
+      if (db[code]) {
+        openModal(code, db[code]);
+        return;
+      }
+
+      // lookup from Google Sheets
+      fetch(SCRIPT_URL + '?action=lookup&isbn=' + encodeURIComponent(code))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.found) {
+            db[code] = data;
+          }
+          openModal(code, data.found ? data : null);
+        })
+        .catch(function() {
+          openModal(code, null);
+        });
     }
 
     Quagga.init({
@@ -545,11 +538,10 @@
     });
 
     // ── MODAL ─────────────────────────────────────────────
-    function openModal(isbn) {
+    function openModal(isbn, item) {
       currentISBN = isbn;
       selectedMasters = [];
 
-      var item = db[isbn];
       var isNew = !item;
 
       document.getElementById('f-isbn').value = isbn;
@@ -558,20 +550,20 @@
       document.getElementById('f-qty').value = item ? (item.qty || 0) : 0;
       document.getElementById('f-bookcase').value = item ? (item.bookcase || '') : '';
       document.getElementById('f-shelf').value = item ? (item.shelf || '') : '';
-      document.getElementById('f-master').checked = item ? (item.isMaster || false) : false;
+      document.getElementById('f-master').checked = item ? (item.isMaster === true || item.isMaster === 'true' || item.isMaster === 'TRUE') : false;
 
       if (item && item.masters) {
-        selectedMasters = item.masters.slice();
+        selectedMasters = Array.isArray(item.masters) ? item.masters.slice() : [];
       }
 
       var badge = document.getElementById('modal-badge');
       badge.textContent = isNew ? 'NEW' : 'EXISTS';
-      badge.className = 'new' ? (isNew ? 'new' : 'existing') : 'existing';
       badge.className = isNew ? 'new' : 'existing';
 
       toggleMaster();
       renderMastersList();
 
+      document.getElementById('result-hint').textContent = isNew ? 'New book — fill in details' : 'Book found — update if needed';
       document.getElementById('modal-overlay').classList.add('show');
       setTimeout(function() { document.getElementById('f-title').focus(); }, 300);
     }
@@ -580,6 +572,7 @@
       document.getElementById('modal-overlay').classList.remove('show');
       currentISBN = '';
       selectedMasters = [];
+      document.getElementById('result-hint').textContent = 'Point camera at a barcode';
     }
 
     function toggleMaster() {
@@ -626,20 +619,21 @@
       }
 
       var item = {
+        action: 'save',
         isbn: isbn,
         sku: document.getElementById('f-sku').value.trim() || isbn,
         title: title,
         qty: parseInt(document.getElementById('f-qty').value) || 0,
-        bookcase: document.getElementById('f-bookcase').value.trim(),
+        bookcase: document.getElementById('f-bookcase').value,
         shelf: document.getElementById('f-shelf').value.trim(),
         isMaster: document.getElementById('f-master').checked,
         masters: selectedMasters.slice()
       };
 
-      // save to local db
+      // update local cache
       db[isbn] = item;
 
-      // update masters list
+      // update local masters list
       if (item.isMaster) {
         var exists = masterItems.some(function(m) { return m.isbn === isbn; });
         if (!exists) masterItems.push({ isbn: isbn, title: item.title });
@@ -647,9 +641,27 @@
         masterItems = masterItems.filter(function(m) { return m.isbn !== isbn; });
       }
 
-      showToast('Saved!', 'success');
+      showToast('Saving...', '');
+
+      // save to Google Sheets
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(item)
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.success) {
+          showToast('Saved!', 'success');
+        } else {
+          showToast('Save failed', 'error');
+        }
+      })
+      .catch(function() {
+        showToast('Connection error', 'error');
+      });
+
       closeModal();
-      document.getElementById('result-hint').textContent = 'Point camera at a barcode';
     }
 
     // ── TOAST ─────────────────────────────────────────────
