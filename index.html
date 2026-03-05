@@ -22,76 +22,21 @@
       font-family: Arial, sans-serif;
       background: var(--dark);
       color: var(--text);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
       min-height: 100vh;
-      padding: 16px;
     }
-    h1 {
+
+    /* ── VIEWS ── */
+    .view { display: none; flex-direction: column; align-items: center; padding: 16px; min-height: 100vh; }
+    .view.active { display: flex; }
+
+    /* ── SCANNER VIEW ── */
+    #scanner-view h1 {
       font-size: 1.2rem;
       padding-bottom: 12px;
       letter-spacing: 2px;
       text-transform: uppercase;
       color: var(--orange);
     }
-
-    /* ── SCANNER CONTAINER ── */
-    #scanner-container {
-      width: 100%;
-      max-width: 480px;
-      position: relative;
-      background: #000;
-      border-radius: var(--radius);
-      overflow: hidden;
-      border: 3px solid var(--blue);
-      max-height: 340px;
-      display: none;
-    }
-    #scanner-container video {
-      width: 100%;
-      height: 340px;
-      object-fit: cover;
-      display: block;
-    }
-    #scanner-container canvas.drawingBuffer {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%;
-      height: 100%;
-    }
-    #target {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 75%;
-      height: 35%;
-      pointer-events: none;
-    }
-    #target::before, #target::after,
-    #target .corner-br, #target .corner-bl {
-      content: '';
-      position: absolute;
-      width: 24px;
-      height: 24px;
-      border-color: var(--green);
-      border-style: solid;
-    }
-    #target::before { top: 0; left: 0; border-width: 3px 0 0 3px; }
-    #target::after  { top: 0; right: 0; border-width: 3px 3px 0 0; }
-    #target .corner-br { bottom: 0; right: 0; border-width: 0 3px 3px 0; }
-    #target .corner-bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; }
-    #target .barcode-hint {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 70%;
-      opacity: 0.12;
-    }
-
-    /* ── SCAN BUTTON AREA ── */
     #scan-btn-area {
       width: 100%;
       max-width: 480px;
@@ -120,280 +65,233 @@
       box-shadow: 0 4px 20px rgba(21,101,192,0.5);
     }
     #scan-btn:active { transform: scale(0.95); }
-    #scan-btn-label {
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      color: var(--muted);
-    }
-
-    /* ── STOP SCAN BUTTON ── */
-    #stop-btn {
+    #scan-btn-label { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); }
+    #scanner-container {
       width: 100%;
       max-width: 480px;
-      margin-top: 12px;
-      padding: 14px;
-      border: none;
+      position: relative;
+      background: #000;
       border-radius: var(--radius);
-      background: var(--light);
-      color: var(--muted);
-      font-size: 0.9rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      cursor: pointer;
+      overflow: hidden;
+      border: 3px solid var(--blue);
+      max-height: 340px;
       display: none;
     }
-    #stop-btn:active { opacity: 0.7; }
-
-    /* ── RESULT BAR ── */
+    #scanner-container video { width: 100%; height: 340px; object-fit: cover; display: block; }
+    #scanner-container canvas.drawingBuffer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    #target {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 75%; height: 35%;
+      pointer-events: none;
+    }
+    #target::before, #target::after, #target .corner-br, #target .corner-bl {
+      content: ''; position: absolute; width: 24px; height: 24px;
+      border-color: var(--green); border-style: solid;
+    }
+    #target::before { top: 0; left: 0; border-width: 3px 0 0 3px; }
+    #target::after  { top: 0; right: 0; border-width: 3px 3px 0 0; }
+    #target .corner-br { bottom: 0; right: 0; border-width: 0 3px 3px 0; }
+    #target .corner-bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; }
+    #target .barcode-hint { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 70%; opacity: 0.12; }
+    #stop-btn {
+      width: 100%; max-width: 480px; margin-top: 12px; padding: 14px;
+      border: none; border-radius: var(--radius); background: var(--light);
+      color: var(--muted); font-size: 0.9rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1px; cursor: pointer; display: none;
+    }
     #result-area {
-      width: 100%;
-      max-width: 480px;
-      margin-top: 16px;
-      background: var(--mid);
-      border-radius: var(--radius);
-      padding: 16px 20px;
-      text-align: center;
+      width: 100%; max-width: 480px; margin-top: 16px;
+      background: var(--mid); border-radius: var(--radius); padding: 16px 20px; text-align: center;
     }
-    #result-label {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-    #result-code {
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: var(--green);
-      letter-spacing: 2px;
-      min-height: 1.8rem;
-    }
-    #result-hint {
-      font-size: 0.8rem;
-      color: #555;
-      margin-top: 6px;
-    }
-
-    /* ── INVENTORY BUTTON ── */
+    #result-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; }
+    #result-code { font-size: 1.4rem; font-weight: 700; color: var(--green); letter-spacing: 2px; min-height: 1.8rem; }
+    #result-hint { font-size: 0.8rem; color: #555; margin-top: 6px; }
     #inventory-btn {
-      width: 100%;
-      max-width: 480px;
-      margin-top: 16px;
-      padding: 16px;
-      border: none;
-      border-radius: var(--radius);
-      background: var(--orange);
-      color: #fff;
-      font-size: 1rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      cursor: pointer;
+      width: 100%; max-width: 480px; margin-top: 16px; padding: 16px;
+      border: none; border-radius: var(--radius); background: var(--orange);
+      color: #fff; font-size: 1rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1px; cursor: pointer;
     }
     #inventory-btn:active { opacity: 0.8; }
 
+    /* ── INVENTORY VIEW ── */
+    #inventory-view {
+      background: var(--dark);
+      width: 100%;
+    }
+    #inv-header {
+      width: 100%;
+      background: var(--mid);
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 3px solid var(--orange);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    #inv-back {
+      background: none;
+      border: none;
+      color: var(--orange);
+      font-size: 1.4rem;
+      cursor: pointer;
+      padding: 4px;
+      flex-shrink: 0;
+    }
+    #inv-header h2 {
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--orange);
+      flex: 1;
+    }
+    #inv-count {
+      font-size: 0.75rem;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    #inv-search-wrap {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--dark);
+      position: sticky;
+      top: 65px;
+      z-index: 9;
+    }
+    #inv-search {
+      width: 100%;
+      padding: 11px 14px;
+      font-size: 1rem;
+      border: 2px solid #444;
+      border-radius: var(--radius);
+      background: var(--mid);
+      color: var(--text);
+    }
+    #inv-search:focus { outline: none; border-color: var(--blue); }
+    #inv-list { width: 100%; padding: 0 16px 80px; }
+    .inv-row {
+      background: var(--mid);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      border-left: 4px solid transparent;
+    }
+    .inv-row:active { opacity: 0.8; }
+    .inv-row.is-master { border-left-color: var(--orange); }
+    .inv-row-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .inv-title {
+      font-size: 1rem;
+      font-weight: 700;
+      flex: 1;
+    }
+    .inv-qty {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--green);
+      flex-shrink: 0;
+    }
+    .inv-qty.low { color: var(--orange); }
+    .inv-qty.zero { color: #c62828; }
+    .inv-meta {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .inv-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .inv-tag {
+      font-size: 0.72rem;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+    .inv-tag.master-badge { background: #3a2800; color: var(--orange); border: 1px solid var(--orange); }
+    .inv-tag.master-link {
+      background: #1a3a5c;
+      color: #90caf9;
+      border: 1px solid var(--blue);
+      cursor: pointer;
+    }
+    .inv-tag.master-link:active { background: var(--blue); color: #fff; }
+    .inv-empty { text-align: center; color: var(--muted); padding: 40px 20px; font-size: 0.9rem; }
+    #inv-loading { text-align: center; color: var(--muted); padding: 40px 20px; font-size: 0.9rem; }
+
     /* ── MODAL ── */
     #modal-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.7);
-      z-index: 100;
-      align-items: flex-end;
-      justify-content: center;
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7); z-index: 100;
+      align-items: flex-end; justify-content: center;
     }
     #modal-overlay.show { display: flex; }
     #modal {
-      background: var(--mid);
-      border-radius: 20px 20px 0 0;
-      width: 100%;
-      max-width: 480px;
-      max-height: 90vh;
-      overflow-y: auto;
-      padding: 24px 20px 32px;
+      background: var(--mid); border-radius: 20px 20px 0 0;
+      width: 100%; max-width: 480px; max-height: 90vh;
+      overflow-y: auto; padding: 24px 20px 32px;
     }
     #modal-title {
-      font-size: 1rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--orange);
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      font-size: 1rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--orange); margin-bottom: 20px;
+      display: flex; align-items: center; gap: 8px;
     }
-    #modal-badge {
-      font-size: 0.7rem;
-      padding: 3px 10px;
-      border-radius: 20px;
-      font-weight: 700;
-    }
+    #modal-badge { font-size: 0.7rem; padding: 3px 10px; border-radius: 20px; font-weight: 700; }
     #modal-badge.new { background: #1565c0; color: #fff; }
     #modal-badge.existing { background: #6a1b9a; color: #fff; }
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      margin-bottom: 14px;
+    .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+    .form-group label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+    .form-group input[type="text"], .form-group input[type="number"], .form-group select {
+      padding: 11px 14px; font-size: 1rem; border: 2px solid #444;
+      border-radius: 8px; background: var(--light); color: var(--text);
     }
-    .form-group label {
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--muted);
-    }
-    .form-group input[type="text"],
-    .form-group input[type="number"],
-    .form-group select {
-      padding: 11px 14px;
-      font-size: 1rem;
-      border: 2px solid #444;
-      border-radius: 8px;
-      background: var(--light);
-      color: var(--text);
-    }
-    .form-group input:focus,
-    .form-group select:focus {
-      outline: none;
-      border-color: var(--blue);
-    }
-    .form-group input[readonly] {
-      background: #222;
-      color: var(--muted);
-    }
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    .qty-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--blue); }
+    .form-group input[readonly] { background: #222; color: var(--muted); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .qty-row { display: flex; align-items: center; gap: 10px; }
     .qty-btn {
-      width: 42px;
-      height: 42px;
-      border: none;
-      border-radius: 8px;
-      background: var(--light);
-      color: var(--text);
-      font-size: 1.4rem;
-      cursor: pointer;
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      width: 42px; height: 42px; border: none; border-radius: 8px;
+      background: var(--light); color: var(--text); font-size: 1.4rem;
+      cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
     }
     .qty-btn:active { background: #555; }
     .qty-row input {
-      flex: 1;
-      padding: 11px 14px;
-      font-size: 1rem;
-      border: 2px solid #444;
-      border-radius: 8px;
-      background: var(--light);
-      color: var(--text);
-      text-align: center;
+      flex: 1; padding: 11px 14px; font-size: 1rem; border: 2px solid #444;
+      border-radius: 8px; background: var(--light); color: var(--text); text-align: center;
     }
     .qty-row input:focus { outline: none; border-color: var(--blue); }
-    .toggle-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: var(--light);
-      border-radius: 8px;
-      padding: 12px 14px;
-    }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; background: var(--light); border-radius: 8px; padding: 12px 14px; }
     .toggle-label { font-size: 0.95rem; }
-    .toggle {
-      position: relative;
-      width: 48px;
-      height: 26px;
-      flex-shrink: 0;
-    }
+    .toggle { position: relative; width: 48px; height: 26px; flex-shrink: 0; }
     .toggle input { display: none; }
-    .toggle-track {
-      position: absolute;
-      inset: 0;
-      background: #444;
-      border-radius: 13px;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
+    .toggle-track { position: absolute; inset: 0; background: #444; border-radius: 13px; cursor: pointer; transition: background 0.2s; }
     .toggle input:checked + .toggle-track { background: var(--green); }
-    .toggle-track::after {
-      content: '';
-      position: absolute;
-      width: 20px;
-      height: 20px;
-      background: #fff;
-      border-radius: 50%;
-      top: 3px;
-      left: 3px;
-      transition: left 0.2s;
-    }
+    .toggle-track::after { content: ''; position: absolute; width: 20px; height: 20px; background: #fff; border-radius: 50%; top: 3px; left: 3px; transition: left 0.2s; }
     .toggle input:checked + .toggle-track::after { left: 25px; }
     #masters-section { display: block; }
-    #masters-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 4px;
-    }
-    .master-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: #1a3a5c;
-      border: 1px solid var(--blue);
-      color: #90caf9;
-      border-radius: 20px;
-      padding: 5px 12px;
-      font-size: 0.82rem;
-      font-weight: 600;
-      cursor: pointer;
-      user-select: none;
-    }
+    #masters-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .master-tag { display: inline-flex; align-items: center; gap: 6px; background: #1a3a5c; border: 1px solid var(--blue); color: #90caf9; border-radius: 20px; padding: 5px 12px; font-size: 0.82rem; font-weight: 600; cursor: pointer; user-select: none; }
     .master-tag.selected { background: var(--blue); color: #fff; }
     .no-masters { font-size: 0.82rem; color: var(--muted); font-style: italic; }
-    .modal-actions {
-      display: flex;
-      gap: 12px;
-      margin-top: 24px;
-    }
-    .btn {
-      flex: 1;
-      padding: 14px;
-      font-size: 1rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-    }
+    .modal-actions { display: flex; gap: 12px; margin-top: 24px; }
+    .btn { flex: 1; padding: 14px; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; border: none; border-radius: 10px; cursor: pointer; }
     .btn:active { opacity: 0.8; }
     .btn-save { background: var(--green); color: #fff; }
     .btn-cancel { background: var(--light); color: var(--muted); }
+
+    /* ── TOAST ── */
     #toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
+      position: fixed; bottom: 24px; left: 50%;
       transform: translateX(-50%) translateY(80px);
-      background: #222;
-      color: #fff;
-      padding: 12px 24px;
-      border-radius: 30px;
-      font-weight: 600;
-      font-size: 0.9rem;
-      z-index: 999;
-      transition: transform 0.3s ease;
-      white-space: nowrap;
+      background: #222; color: #fff; padding: 12px 24px;
+      border-radius: 30px; font-weight: 600; font-size: 0.9rem;
+      z-index: 999; transition: transform 0.3s ease; white-space: nowrap;
     }
     #toast.show { transform: translateX(-50%) translateY(0); }
     #toast.success { background: var(--green); }
@@ -402,63 +300,76 @@
 </head>
 <body>
 
-  <h1>📚 Book Scanner</h1>
+  <!-- ══ SCANNER VIEW ══ -->
+  <div id="scanner-view" class="view active">
+    <h1>📚 Book Scanner</h1>
 
-  <!-- SCAN BUTTON (shown when camera is off) -->
-  <div id="scan-btn-area">
-    <button id="scan-btn" onclick="startScanner()">📷</button>
-    <div id="scan-btn-label">Tap to Scan</div>
+    <div id="scan-btn-area">
+      <button id="scan-btn" onclick="startScanner()">📷</button>
+      <div id="scan-btn-label">Tap to Scan</div>
+    </div>
+
+    <div id="scanner-container">
+      <video id="video" autoplay playsinline muted></video>
+      <div id="target">
+        <div class="corner-br"></div>
+        <div class="corner-bl"></div>
+        <svg class="barcode-hint" viewBox="0 0 220 80" xmlns="http://www.w3.org/2000/svg" fill="white">
+          <rect x="0"  y="0" width="3"  height="80"/><rect x="5"  y="0" width="1"  height="80"/>
+          <rect x="8"  y="0" width="4"  height="80"/><rect x="14" y="0" width="2"  height="80"/>
+          <rect x="18" y="0" width="3"  height="80"/><rect x="23" y="0" width="1"  height="80"/>
+          <rect x="26" y="0" width="5"  height="80"/><rect x="33" y="0" width="2"  height="80"/>
+          <rect x="37" y="0" width="3"  height="80"/><rect x="42" y="0" width="1"  height="80"/>
+          <rect x="45" y="0" width="4"  height="80"/><rect x="51" y="0" width="2"  height="80"/>
+          <rect x="55" y="0" width="3"  height="80"/><rect x="60" y="0" width="1"  height="80"/>
+          <rect x="63" y="0" width="5"  height="80"/><rect x="70" y="0" width="2"  height="80"/>
+          <rect x="74" y="0" width="3"  height="80"/><rect x="79" y="0" width="1"  height="80"/>
+          <rect x="82" y="0" width="4"  height="80"/><rect x="88" y="0" width="2"  height="80"/>
+          <rect x="92" y="0" width="3"  height="80"/><rect x="97" y="0" width="1"  height="80"/>
+          <rect x="100" y="0" width="5" height="80"/><rect x="107" y="0" width="2" height="80"/>
+          <rect x="111" y="0" width="3" height="80"/><rect x="116" y="0" width="1" height="80"/>
+          <rect x="119" y="0" width="4" height="80"/><rect x="125" y="0" width="2" height="80"/>
+          <rect x="129" y="0" width="3" height="80"/><rect x="134" y="0" width="1" height="80"/>
+          <rect x="137" y="0" width="5" height="80"/><rect x="144" y="0" width="2" height="80"/>
+          <rect x="148" y="0" width="3" height="80"/><rect x="153" y="0" width="1" height="80"/>
+          <rect x="156" y="0" width="4" height="80"/><rect x="162" y="0" width="2" height="80"/>
+          <rect x="166" y="0" width="3" height="80"/><rect x="171" y="0" width="1" height="80"/>
+          <rect x="174" y="0" width="5" height="80"/><rect x="181" y="0" width="2" height="80"/>
+          <rect x="185" y="0" width="3" height="80"/><rect x="190" y="0" width="1" height="80"/>
+          <rect x="193" y="0" width="4" height="80"/><rect x="199" y="0" width="2" height="80"/>
+          <rect x="203" y="0" width="3" height="80"/><rect x="208" y="0" width="1" height="80"/>
+          <rect x="211" y="0" width="5" height="80"/><rect x="218" y="0" width="2" height="80"/>
+        </svg>
+      </div>
+    </div>
+
+    <button id="stop-btn" onclick="stopScanner()">✕ Stop Scanning</button>
+
+    <div id="result-area">
+      <div id="result-label">Last Scanned</div>
+      <div id="result-code">—</div>
+      <div id="result-hint">Tap the button above to start scanning</div>
+    </div>
+
+    <button id="inventory-btn" onclick="showInventory()">📊 View Inventory</button>
   </div>
 
-  <!-- CAMERA (shown when scanning) -->
-  <div id="scanner-container">
-    <video id="video" autoplay playsinline muted></video>
-    <div id="target">
-      <div class="corner-br"></div>
-      <div class="corner-bl"></div>
-      <svg class="barcode-hint" viewBox="0 0 220 80" xmlns="http://www.w3.org/2000/svg" fill="white">
-        <rect x="0"  y="0" width="3"  height="80"/><rect x="5"  y="0" width="1"  height="80"/>
-        <rect x="8"  y="0" width="4"  height="80"/><rect x="14" y="0" width="2"  height="80"/>
-        <rect x="18" y="0" width="3"  height="80"/><rect x="23" y="0" width="1"  height="80"/>
-        <rect x="26" y="0" width="5"  height="80"/><rect x="33" y="0" width="2"  height="80"/>
-        <rect x="37" y="0" width="3"  height="80"/><rect x="42" y="0" width="1"  height="80"/>
-        <rect x="45" y="0" width="4"  height="80"/><rect x="51" y="0" width="2"  height="80"/>
-        <rect x="55" y="0" width="3"  height="80"/><rect x="60" y="0" width="1"  height="80"/>
-        <rect x="63" y="0" width="5"  height="80"/><rect x="70" y="0" width="2"  height="80"/>
-        <rect x="74" y="0" width="3"  height="80"/><rect x="79" y="0" width="1"  height="80"/>
-        <rect x="82" y="0" width="4"  height="80"/><rect x="88" y="0" width="2"  height="80"/>
-        <rect x="92" y="0" width="3"  height="80"/><rect x="97" y="0" width="1"  height="80"/>
-        <rect x="100" y="0" width="5" height="80"/><rect x="107" y="0" width="2" height="80"/>
-        <rect x="111" y="0" width="3" height="80"/><rect x="116" y="0" width="1" height="80"/>
-        <rect x="119" y="0" width="4" height="80"/><rect x="125" y="0" width="2" height="80"/>
-        <rect x="129" y="0" width="3" height="80"/><rect x="134" y="0" width="1" height="80"/>
-        <rect x="137" y="0" width="5" height="80"/><rect x="144" y="0" width="2" height="80"/>
-        <rect x="148" y="0" width="3" height="80"/><rect x="153" y="0" width="1" height="80"/>
-        <rect x="156" y="0" width="4" height="80"/><rect x="162" y="0" width="2" height="80"/>
-        <rect x="166" y="0" width="3" height="80"/><rect x="171" y="0" width="1" height="80"/>
-        <rect x="174" y="0" width="5" height="80"/><rect x="181" y="0" width="2" height="80"/>
-        <rect x="185" y="0" width="3" height="80"/><rect x="190" y="0" width="1" height="80"/>
-        <rect x="193" y="0" width="4" height="80"/><rect x="199" y="0" width="2" height="80"/>
-        <rect x="203" y="0" width="3" height="80"/><rect x="208" y="0" width="1" height="80"/>
-        <rect x="211" y="0" width="5" height="80"/><rect x="218" y="0" width="2" height="80"/>
-      </svg>
+  <!-- ══ INVENTORY VIEW ══ -->
+  <div id="inventory-view" class="view">
+    <div id="inv-header">
+      <button id="inv-back" onclick="showScanner()">‹</button>
+      <h2>📚 Inventory</h2>
+      <span id="inv-count"></span>
+    </div>
+    <div id="inv-search-wrap">
+      <input type="text" id="inv-search" placeholder="🔍 Search title, ISBN, shelf..." oninput="filterInventory()"/>
+    </div>
+    <div id="inv-list">
+      <div id="inv-loading">Loading inventory...</div>
     </div>
   </div>
 
-  <!-- STOP SCANNING BUTTON -->
-  <button id="stop-btn" onclick="stopScanner()">✕ Stop Scanning</button>
-
-  <!-- RESULT BAR -->
-  <div id="result-area">
-    <div id="result-label">Last Scanned</div>
-    <div id="result-code">—</div>
-    <div id="result-hint">Tap the button above to start scanning</div>
-  </div>
-
-  <!-- VIEW INVENTORY BUTTON -->
-  <button id="inventory-btn" onclick="openInventory()">📊 View Inventory</button>
-
-  <!-- MODAL -->
+  <!-- ══ MODAL ══ -->
   <div id="modal-overlay">
     <div id="modal">
       <div id="modal-title">
@@ -531,9 +442,8 @@
   <div id="toast"></div>
 
   <script>
-    var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx-fq5dlyBrciMVcx5EJ1fhdYqZhJcJpqO-PRv_evJ7HSfnnLhjW8f71u14Q4n66idt/exec';
-    var SHEET_URL = 'https://docs.google.com/spreadsheets/d/1at5qF8A5RpxlCQO84euUoPLt6FX-p8REWF-q0FkvH3I/edit#gid=0';
-
+    var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyd6AsO636aObza0IWFyQLR_Nz2nVcnDrJoTJzYa49cqs-FYIfMqhRIXsuky_M29ryz/exec';
+    var SHEET_URL = 'https://docs.google.com/spreadsheets/d/1at5qF8A5RpxlCQO84euUoPLt6FX-p8REWF-q0FkvH3I/edit?gid=0';
     var lastCode = '';
     var lastTime = 0;
     var currentISBN = '';
@@ -541,6 +451,9 @@
     var db = {};
     var masterItems = [];
     var scannerRunning = false;
+    var inventoryData = [];
+    var filteredData = [];
+    var modalSource = 'scanner'; // 'scanner' or 'inventory'
 
     // load masters on startup
     fetch(SCRIPT_URL + '?action=masters')
@@ -548,7 +461,130 @@
       .then(function(data) { masterItems = data.masters || []; })
       .catch(function() {});
 
-    // ── SCANNER CONTROLS ──────────────────────────────────
+    // ── VIEW SWITCHING ─────────────────────────────────────
+    function showInventory() {
+      document.getElementById('scanner-view').classList.remove('active');
+      document.getElementById('inventory-view').classList.add('active');
+      loadInventory();
+    }
+
+    function showScanner() {
+      document.getElementById('inventory-view').classList.remove('active');
+      document.getElementById('scanner-view').classList.add('active');
+    }
+
+    // ── INVENTORY ──────────────────────────────────────────
+    function loadInventory() {
+      document.getElementById('inv-loading').style.display = 'block';
+      document.getElementById('inv-list').innerHTML = '<div id="inv-loading">Loading inventory...</div>';
+      fetch(SCRIPT_URL + '?action=all')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          inventoryData = data.items || [];
+          filteredData = inventoryData.slice();
+          renderInventory();
+        })
+        .catch(function() {
+          document.getElementById('inv-list').innerHTML = '<div class="inv-empty">Could not load inventory.</div>';
+        });
+    }
+
+    function filterInventory() {
+      var q = document.getElementById('inv-search').value.toLowerCase().trim();
+      if (!q) {
+        filteredData = inventoryData.slice();
+      } else {
+        filteredData = inventoryData.filter(function(item) {
+          return [item.isbn, item.sku, item.title, item.bookcase, item.shelf, item.masters]
+            .some(function(v) { return String(v || '').toLowerCase().indexOf(q) > -1; });
+        });
+      }
+      renderInventory();
+    }
+
+    function renderInventory() {
+      var list = document.getElementById('inv-list');
+      document.getElementById('inv-count').textContent = filteredData.length + ' items';
+
+      if (filteredData.length === 0) {
+        list.innerHTML = '<div class="inv-empty">No items found.</div>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < filteredData.length; i++) {
+        var item = filteredData[i];
+        var qty = Number(item.qty) || 0;
+        var qtyClass = qty === 0 ? 'zero' : qty <= 3 ? 'low' : '';
+        var isMaster = item.isMaster === true || item.isMaster === 'true' || item.isMaster === 'TRUE';
+        var location = [item.bookcase, item.shelf].filter(Boolean).join(' · ') || '—';
+
+        var tags = '';
+        if (isMaster) {
+          tags += '<span class="inv-tag master-badge">⭐ Master</span>';
+        }
+        if (!isMaster && item.masters && item.masters.length > 0) {
+          for (var j = 0; j < item.masters.length; j++) {
+            var mIsbn = item.masters[j];
+            var mTitle = getMasterTitle(mIsbn);
+            tags += '<span class="inv-tag master-link" onclick="jumpToMaster(\'' + esc(mIsbn) + '\',event)">'
+              + '→ ' + esc(mTitle) + '</span>';
+          }
+        }
+
+        html += '<div class="inv-row' + (isMaster ? ' is-master' : '') + '" id="inv-row-' + esc(item.isbn) + '" onclick="openModalFromInventory(\'' + esc(item.isbn) + '\')">'
+          + '<div class="inv-row-top">'
+          + '<div class="inv-title">' + esc(item.title || '—') + '</div>'
+          + '<div class="inv-qty ' + qtyClass + '">' + qty + '</div>'
+          + '</div>'
+          + '<div class="inv-meta">' + esc(String(item.isbn)) + ' · ' + esc(location) + '</div>'
+          + (tags ? '<div class="inv-tags">' + tags + '</div>' : '')
+          + '</div>';
+      }
+      list.innerHTML = html;
+    }
+
+    function getMasterTitle(isbn) {
+      for (var i = 0; i < inventoryData.length; i++) {
+        if (String(inventoryData[i].isbn) === String(isbn)) return inventoryData[i].title || isbn;
+      }
+      for (var j = 0; j < masterItems.length; j++) {
+        if (String(masterItems[j].isbn) === String(isbn)) return masterItems[j].title || isbn;
+      }
+      return isbn;
+    }
+
+    function jumpToMaster(isbn, event) {
+      event.stopPropagation();
+      // clear search so master is visible
+      document.getElementById('inv-search').value = '';
+      filteredData = inventoryData.slice();
+      renderInventory();
+      // scroll to master row
+      setTimeout(function() {
+        var el = document.getElementById('inv-row-' + isbn);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.style.outline = '3px solid ' + 'var(--orange)';
+          setTimeout(function() { el.style.outline = ''; }, 2000);
+        }
+      }, 100);
+    }
+
+    function openModalFromInventory(isbn) {
+      modalSource = 'inventory';
+      var item = null;
+      for (var i = 0; i < inventoryData.length; i++) {
+        if (String(inventoryData[i].isbn) === String(isbn)) { item = inventoryData[i]; break; }
+      }
+      openModal(isbn, item);
+    }
+
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    // ── SCANNER ────────────────────────────────────────────
     function startScanner() {
       document.getElementById('scan-btn-area').style.display = 'none';
       document.getElementById('scanner-container').style.display = 'block';
@@ -559,8 +595,7 @@
 
       Quagga.init({
         inputStream: {
-          name: 'Live',
-          type: 'LiveStream',
+          name: 'Live', type: 'LiveStream',
           target: document.getElementById('scanner-container'),
           constraints: {
             facingMode: 'environment',
@@ -570,19 +605,14 @@
           area: { top: '20%', right: '10%', left: '10%', bottom: '20%' }
         },
         locator: { patchSize: 'medium', halfSample: false },
-        numOfWorkers: 4,
-        frequency: 20,
+        numOfWorkers: 4, frequency: 20,
         decoder: {
           readers: ['ean_reader'],
           debug: { drawBoundingBox: true, showFrequency: false, drawScanline: true, showPattern: false }
         },
         locate: true
       }, function(err) {
-        if (err) {
-          document.getElementById('result-hint').textContent = 'Camera error: ' + err;
-          stopScanner();
-          return;
-        }
+        if (err) { stopScanner(); return; }
         scannerRunning = true;
         Quagga.start();
       });
@@ -601,40 +631,28 @@
       document.getElementById('scan-btn-area').style.display = 'flex';
     }
 
-    function openInventory() {
-      window.open(SHEET_URL, '_blank');
-    }
-
-    // ── BEEP ──────────────────────────────────────────────
     function beep() {
       try {
         var ac = new (window.AudioContext || window.webkitAudioContext)();
         var osc = ac.createOscillator();
         var gain = ac.createGain();
-        osc.connect(gain);
-        gain.connect(ac.destination);
-        osc.frequency.value = 1800;
-        gain.gain.value = 0.3;
-        osc.start();
-        osc.stop(ac.currentTime + 0.15);
+        osc.connect(gain); gain.connect(ac.destination);
+        osc.frequency.value = 1800; gain.gain.value = 0.3;
+        osc.start(); osc.stop(ac.currentTime + 0.15);
       } catch(e) {}
     }
 
-    // ── DETECT ────────────────────────────────────────────
     function onDetected(code) {
       var now = Date.now();
       if (code === lastCode && now - lastTime < 5000) return;
-      lastCode = code;
-      lastTime = now;
+      lastCode = code; lastTime = now;
       beep();
       stopScanner();
+      modalSource = 'scanner';
       document.getElementById('result-code').textContent = code;
       document.getElementById('result-hint').textContent = 'Looking up...';
 
-      if (db[code]) {
-        openModal(code, db[code]);
-        return;
-      }
+      if (db[code]) { openModal(code, db[code]); return; }
 
       fetch(SCRIPT_URL + '?action=lookup&isbn=' + encodeURIComponent(code))
         .then(function(r) { return r.json(); })
@@ -642,12 +660,10 @@
           if (data.found) db[code] = data;
           openModal(code, data.found ? data : null);
         })
-        .catch(function() {
-          openModal(code, null);
-        });
+        .catch(function() { openModal(code, null); });
     }
 
-    // ── MODAL ─────────────────────────────────────────────
+    // ── MODAL ──────────────────────────────────────────────
     function openModal(isbn, item) {
       currentISBN = isbn;
       selectedMasters = [];
@@ -671,17 +687,16 @@
 
       toggleMaster();
       renderMastersList();
-
-      document.getElementById('result-hint').textContent = isNew ? 'New book — fill in details' : 'Book found — update if needed';
       document.getElementById('modal-overlay').classList.add('show');
       setTimeout(function() { document.getElementById('f-title').focus(); }, 300);
     }
 
     function closeModal() {
       document.getElementById('modal-overlay').classList.remove('show');
-      currentISBN = '';
-      selectedMasters = [];
-      document.getElementById('result-hint').textContent = 'Tap the button above to start scanning';
+      currentISBN = ''; selectedMasters = [];
+      if (modalSource === 'scanner') {
+        document.getElementById('result-hint').textContent = 'Tap the button above to start scanning';
+      }
     }
 
     function toggleMaster() {
@@ -697,15 +712,14 @@
       }
       list.innerHTML = masterItems.map(function(m) {
         var sel = selectedMasters.indexOf(m.isbn) > -1;
-        return '<div class="master-tag ' + (sel ? 'selected' : '') + '" onclick="toggleMasterTag(\'' + m.isbn + '\')">'
-          + (sel ? '✓ ' : '') + m.title + '</div>';
+        return '<div class="master-tag ' + (sel ? 'selected' : '') + '" onclick="toggleMasterTag(\'' + esc(m.isbn) + '\')">'
+          + (sel ? '✓ ' : '') + esc(m.title) + '</div>';
       }).join('');
     }
 
     function toggleMasterTag(isbn) {
       var idx = selectedMasters.indexOf(isbn);
-      if (idx > -1) { selectedMasters.splice(idx, 1); }
-      else { selectedMasters.push(isbn); }
+      if (idx > -1) { selectedMasters.splice(idx, 1); } else { selectedMasters.push(isbn); }
       renderMastersList();
     }
 
@@ -740,6 +754,15 @@
         masterItems = masterItems.filter(function(m) { return m.isbn !== isbn; });
       }
 
+      // update inventoryData cache too
+      var found = false;
+      for (var i = 0; i < inventoryData.length; i++) {
+        if (String(inventoryData[i].isbn) === String(isbn)) {
+          inventoryData[i] = item; found = true; break;
+        }
+      }
+      if (!found) inventoryData.push(item);
+
       showToast('Saving...', '');
 
       fetch(SCRIPT_URL, {
@@ -749,15 +772,20 @@
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        if (data.success) { showToast('Saved!', 'success'); }
-        else { showToast('Save failed', 'error'); }
+        if (data.success) {
+          showToast('Saved!', 'success');
+          if (modalSource === 'inventory') {
+            filteredData = inventoryData.slice();
+            renderInventory();
+          }
+        } else { showToast('Save failed', 'error'); }
       })
       .catch(function() { showToast('Connection error', 'error'); });
 
       closeModal();
     }
 
-    // ── TOAST ─────────────────────────────────────────────
+    // ── TOAST ──────────────────────────────────────────────
     var toastTimer;
     function showToast(msg, type) {
       var el = document.getElementById('toast');
