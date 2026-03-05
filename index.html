@@ -455,7 +455,7 @@
     var inventoryData = [];
     var filteredData = [];
     var modalSource = 'scanner'; // 'scanner' or 'inventory'
-    if (window.location.hash === '#inventory') { 
+    if (window.location.hash === '#inventory') {
       document.getElementById('scanner-view').classList.remove('active');
       document.getElementById('inventory-view').classList.add('active');
       loadInventory();
@@ -478,7 +478,7 @@
       loadInventory();
     }
 
-    function showScanner() {
+function showScanner() {
       window.location.hash = '';
       document.getElementById('inventory-view').classList.remove('active');
       document.getElementById('scanner-view').classList.add('active');
