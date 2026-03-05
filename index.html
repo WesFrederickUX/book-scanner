@@ -404,10 +404,24 @@
         <label>Quantity on Hand</label>
         <div class="qty-row">
           <button class="qty-btn" onclick="adjustQty(-1)">−</button>
-          <input type="number" id="f-qty" value="0" min="0"/>
+          <input type="number" id="f-qty" value="0" min="0" oninput="onQtyDirectChange()"/>
           <button class="qty-btn" onclick="adjustQty(1)">+</button>
         </div>
       </div>
+                  <div class="form-row">
+                                  <div class="form-group">
+                                                    <label>Loose Count</label>
+                                                  <input type="number" id="f-loose" value="0" min="0" inputmode="numeric" oninput="onLooseChange()"/>
+                                  </div>
+                                <div class="form-group">
+                                                <label>Boxes</label>
+                                                <input type="number" id="f-boxes" value="0" min="0" inputmode="numeric" oninput="onBoxFieldChange()"/>
+                                </div>
+                                <div class="form-group">
+                                                <label>Box Count</label>
+                                                <input type="number" id="f-boxcount" value="0" min="0" inputmode="numeric" oninput="onBoxFieldChange()"/>
+                                </div>
+                  </div>
       <div class="form-row">
         <div class="form-group">
           <label>Bookcase</label>
@@ -730,6 +744,9 @@ var sortField = 'title';
       document.getElementById('f-sku').value = item ? (item.sku || isbn) : isbn;
       document.getElementById('f-title').value = item ? (item.title || '') : '';
       document.getElementById('f-qty').value = item ? (item.qty || 0) : 0;
+              document.getElementById('f-loose').value = item ? (item.looseCount || 0) : 0;
+              document.getElementById('f-boxes').value = item ? (item.boxes || 0) : 0;
+              document.getElementById('f-boxcount').value = item ? (item.boxCount || 0) : 0;
       document.getElementById('f-bookcase').value = item ? (item.bookcase || '') : '';
       document.getElementById('f-shelf').value = item ? (item.shelf || '') : '';
       document.getElementById('f-master').checked = item ? (item.isMaster === true || item.isMaster === 'true' || item.isMaster === 'TRUE') : false;
@@ -780,11 +797,57 @@ var sortField = 'title';
       renderMastersList();
     }
 
-    function adjustQty(delta) {
-      var input = document.getElementById('f-qty');
-      input.value = Math.max(0, (parseInt(input.value) || 0) + delta);
-    }
+function adjustQty(delta) {
+          var input = document.getElementById('f-qty');
+          var boxes = parseInt(document.getElementById('f-boxes').value) || 0;
+          var boxCount = parseInt(document.getElementById('f-boxcount').value) || 0;
+          var floor = boxes * boxCount;
+          var current = parseInt(input.value) || 0;
+          var newVal = current + delta;
+          if (newVal < floor) {
+                      showToast('Boxes and Box Quantities prevent me from lowering this any further', 'error');
+                      return;
+          }
+          input.value = Math.max(floor, newVal);
+          document.getElementById('f-loose').value = Math.max(0, input.value - floor);
+}
 
+          function onBoxFieldChange() {
+                    var boxes = parseInt(document.getElementById('f-boxes').value) || 0;
+                    var boxCount = parseInt(document.getElementById('f-boxcount').value) || 0;
+                    var loose = parseInt(document.getElementById('f-loose').value) || 0;
+                    var floor = boxes * boxCount;
+                    var currentQty = parseInt(document.getElementById('f-qty').value) || 0;
+                    if (currentQty < floor) {
+                                document.getElementById('f-qty').value = floor;
+                                document.getElementById('f-loose').value = 0;
+                    } else {
+                                document.getElementById('f-qty').value = floor + loose;
+                    }
+          }
+
+          function onLooseChange() {
+                    var boxes = parseInt(document.getElementById('f-boxes').value) || 0;
+                    var boxCount = parseInt(document.getElementById('f-boxcount').value) || 0;
+                    var loose = parseInt(document.getElementById('f-loose').value) || 0;
+                    var floor = boxes * boxCount;
+                    document.getElementById('f-qty').value = floor + loose;
+          }
+
+          function onQtyDirectChange() {
+                    var boxes = parseInt(document.getElementById('f-boxes').value) || 0;
+                    var boxCount = parseInt(document.getElementById('f-boxcount').value) || 0;
+                    var floor = boxes * boxCount;
+                    var newQty = parseInt(document.getElementById('f-qty').value) || 0;
+                    if (newQty < floor) {
+                                showToast('Boxes and Box Quantities prevent me from lowering this any further', 'error');
+                                document.getElementById('f-qty').value = floor;
+                                document.getElementById('f-loose').value = 0;
+                                return;
+                    }
+                    document.getElementById('f-loose').value = Math.max(0, newQty - floor);
+          }
+    
     function saveItem() {
       var isbn = document.getElementById('f-isbn').value.trim();
       var title = document.getElementById('f-title').value.trim();
@@ -797,6 +860,9 @@ var sortField = 'title';
         sku: document.getElementById('f-sku').value.trim() || isbn,
         title: title,
         qty: parseInt(document.getElementById('f-qty').value) || 0,
+                looseCount: parseInt(document.getElementById('f-loose').value) || 0,
+                boxes: parseInt(document.getElementById('f-boxes').value) || 0,
+                boxCount: parseInt(document.getElementById('f-boxcount').value) || 0,
         bookcase: document.getElementById('f-bookcase').value,
         shelf: document.getElementById('f-shelf').value.trim(),
         isMaster: document.getElementById('f-master').checked,
