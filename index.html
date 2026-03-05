@@ -33,11 +33,11 @@
       background: #000;
       min-height: 240px;
     }
-    #scanner-container video {
+    video {
       width: 100%;
       display: block;
     }
-    #scanner-container canvas {
+    canvas {
       display: none;
     }
     #overlay {
@@ -45,8 +45,8 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 70%;
-      height: 40%;
+      width: 80%;
+      height: 35%;
       border: 3px solid #4caf50;
       border-radius: 6px;
       pointer-events: none;
@@ -81,74 +81,122 @@
 <body>
   <h1>📚 Book Scanner</h1>
   <div id="scanner-container">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="canvas"></canvas>
     <div id="overlay"></div>
   </div>
   <div id="result">Point camera at a barcode...</div>
-  <div id="status">Loading...</div>
+  <div id="status">Starting...</div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
   <script>
     var statusEl = document.getElementById('status');
     var resultEl = document.getElementById('result');
+    var video = document.getElementById('video');
+    var canvas = document.getElementById('canvas');
+    var ctx = canvas.getContext('2d');
     var lastCode = '';
     var lastTime = 0;
+    var scanning = false;
 
-    if (typeof Quagga === 'undefined') {
-      statusEl.textContent = 'ERROR: Quagga library not loaded';
-    } else {
-      statusEl.textContent = 'Quagga loaded — starting camera...';
+    function beep() {
+      try {
+        var ac = new (window.AudioContext || window.webkitAudioContext)();
+        var osc = ac.createOscillator();
+        var gain = ac.createGain();
+        osc.connect(gain);
+        gain.connect(ac.destination);
+        osc.frequency.value = 1800;
+        gain.gain.value = 0.3;
+        osc.start();
+        osc.stop(ac.currentTime + 0.15);
+      } catch(e) {}
+    }
 
-      Quagga.init({
-        inputStream: {
-          name: 'Live',
-          type: 'LiveStream',
-          target: document.getElementById('scanner-container'),
-          constraints: {
-            facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          }
-        },
-        decoder: {
-          readers: ['ean_reader'],
-          multiple: false
-        },
-        locate: false,
-        numOfWorkers: 2,
-        frequency: 10
-      }, function(err) {
-        if (err) {
-          statusEl.textContent = 'Init error: ' + err;
-          return;
-        }
+    function onDetected(code) {
+      var now = Date.now();
+      if (code === lastCode && now - lastTime < 3000) return;
+      lastCode = code;
+      lastTime = now;
+      resultEl.textContent = '✅ ' + code;
+      resultEl.className = 'found';
+      statusEl.textContent = 'Scanned!';
+      beep();
+    }
+
+    // Try native BarcodeDetector first
+    if ('BarcodeDetector' in window) {
+      statusEl.textContent = 'Using native BarcodeDetector...';
+
+      var detector = new BarcodeDetector({
+        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf']
+      });
+
+      navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      }).then(function(stream) {
+        video.srcObject = stream;
+        video.play();
         statusEl.textContent = 'Camera ready — scanning...';
-        Quagga.start();
+
+        function tick() {
+          if (video.readyState === video.HAVE_ENOUGH_DATA) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            detector.detect(canvas).then(function(barcodes) {
+              if (barcodes.length > 0) {
+                // prefer EAN-13
+                var best = barcodes[0];
+                for (var i = 0; i < barcodes.length; i++) {
+                  if (barcodes[i].format === 'ean_13') { best = barcodes[i]; break; }
+                }
+                onDetected(best.rawValue);
+              }
+            }).catch(function() {});
+          }
+          requestAnimationFrame(tick);
+        }
+        tick();
+
+      }).catch(function(err) {
+        statusEl.textContent = 'Camera error: ' + err;
       });
 
-      Quagga.onDetected(function(data) {
-        var code = data.codeResult.code;
-        var now = Date.now();
-        if (code === lastCode && now - lastTime < 3000) return;
-        lastCode = code;
-        lastTime = now;
+    } else {
+      // Fallback to Quagga
+      statusEl.textContent = 'Native API not available — loading Quagga...';
 
-        resultEl.textContent = '✅ ' + code;
-        resultEl.className = 'found';
-        statusEl.textContent = 'Scanned successfully!';
-
-        // beep
-        try {
-          var ctx = new (window.AudioContext || window.webkitAudioContext)();
-          var osc = ctx.createOscillator();
-          var gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.frequency.value = 1800;
-          gain.gain.value = 0.3;
-          osc.start();
-          osc.stop(ctx.currentTime + 0.15);
-        } catch(e) {}
-      });
+      var script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js';
+      script.onload = function() {
+        statusEl.textContent = 'Quagga loaded — starting...';
+        Quagga.init({
+          inputStream: {
+            name: 'Live',
+            type: 'LiveStream',
+            target: document.getElementById('scanner-container'),
+            constraints: { facingMode: 'environment' }
+          },
+          decoder: {
+            readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'code_128_reader'],
+            multiple: false
+          },
+          locate: false,
+          numOfWorkers: 2,
+          frequency: 10
+        }, function(err) {
+          if (err) { statusEl.textContent = 'Quagga error: ' + err; return; }
+          statusEl.textContent = 'Camera ready — scanning...';
+          Quagga.start();
+        });
+        Quagga.onDetected(function(data) {
+          onDetected(data.codeResult.code);
+        });
+      };
+      script.onerror = function() {
+        statusEl.textContent = 'All libraries failed to load';
+      };
+      document.head.appendChild(script);
     }
   </script>
 </body>
