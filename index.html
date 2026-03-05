@@ -6,7 +6,7 @@
   <title>Book Scanner</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
     :root {
       --orange: #f57c00;
       --blue: #1565c0;
@@ -455,6 +455,11 @@
     var inventoryData = [];
     var filteredData = [];
     var modalSource = 'scanner'; // 'scanner' or 'inventory'
+    if (window.location.hash === '#inventory') { 
+      document.getElementById('scanner-view').classList.remove('active');
+      document.getElementById('inventory-view').classList.add('active');
+      loadInventory();
+    }
 
     // load masters on startup
     fetch(SCRIPT_URL + '?action=masters')
@@ -464,6 +469,7 @@
 
     // ── VIEW SWITCHING ─────────────────────────────────────
     function showInventory() {
+      window.location.hash = 'inventory';
       inventoryData = [];
       filteredData = [];
       document.getElementById('inv-list').innerHTML = '<div id="inv-loading">Loading inventory...</div>';
@@ -473,6 +479,7 @@
     }
 
     function showScanner() {
+      window.location.hash = '';
       document.getElementById('inventory-view').classList.remove('active');
       document.getElementById('scanner-view').classList.add('active');
     }
