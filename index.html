@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Book Scanner</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #1a1a1a;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 1.4rem;
+      margin-bottom: 20px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #f57c00;
+    }
+    #reader {
+      width: 100%;
+      max-width: 480px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 3px solid #f57c00;
+    }
+    #result {
+      margin-top: 24px;
+      width: 100%;
+      max-width: 480px;
+      background: #2b2b2b;
+      border-radius: 12px;
+      padding: 20px;
+      font-size: 1.1rem;
+      min-height: 60px;
+      text-align: center;
+      color: #aaa;
+    }
+    #result.found {
+      color: #4caf50;
+      font-weight: 700;
+      font-size: 1.3rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>📚 Book Scanner</h1>
+  <div id="reader"></div>
+  <div id="result">Point camera at a barcode...</div>
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script>
+    var lastCode = '';
+    var lastTime = 0;
+
+    var scanner = new Html5Qrcode('reader');
+
+    scanner.start(
+      { facingMode: 'environment' },
+      {
+        fps: 15,
+        qrbox: { width: 300, height: 150 },
+        aspectRatio: 1.5,
+        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39
+        ]
+      },
+      function(decodedText) {
+        var now = Date.now();
+        if (decodedText === lastCode && now - lastTime < 3000) return;
+        lastCode = decodedText;
+        lastTime = now;
+        var result = document.getElementById('result');
+        result.textContent = '✅ ' + decodedText;
+        result.className = 'found';
+      },
+      function(error) {
+        // silent — scanning continuously
+      }
+    ).catch(function(err) {
+      document.getElementById('result').textContent = 'Camera error: ' + err;
+    });
+  </script>
+</body>
+</html>
