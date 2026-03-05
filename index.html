@@ -1,10 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Book Scanner</title>
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -24,12 +25,25 @@
       text-transform: uppercase;
       color: #f57c00;
     }
-    #reader {
+    #scanner-container {
       width: 100%;
       max-width: 480px;
+      position: relative;
+      background: #000;
       border-radius: 12px;
       overflow: hidden;
       border: 3px solid #f57c00;
+    }
+    #scanner-container video {
+      width: 100%;
+      display: block;
+    }
+    #scanner-container canvas.drawingBuffer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
     }
     #result-area {
       width: 100%;
@@ -63,7 +77,7 @@
 </head>
 <body>
   <h1>📚 Book Scanner</h1>
-  <div id="reader"></div>
+  <div id="scanner-container"></div>
   <div id="result-area">
     <div id="result-label">Last Scanned</div>
     <div id="result-code">—</div>
@@ -100,31 +114,57 @@
       resultHint.textContent = 'Scanned — ready for next';
     }
 
-    var scanner = new Html5Qrcode('reader');
-
-    scanner.start(
-      { facingMode: 'environment' },
-      {
-        fps: 15,
-        qrbox: { width: 280, height: 120 },
-        aspectRatio: 1.8,
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.CODE_39
-        ]
+    Quagga.init({
+      inputStream: {
+        name: 'Live',
+        type: 'LiveStream',
+        target: document.getElementById('scanner-container'),
+        constraints: {
+          facingMode: 'environment',
+          width: { min: 640, ideal: 1280, max: 1920 },
+          height: { min: 480, ideal: 720, max: 1080 }
+        },
+        area: {
+          top: '20%',
+          right: '10%',
+          left: '10%',
+          bottom: '20%'
+        }
       },
-      function(decodedText) {
-        onDetected(decodedText);
+      locator: {
+        patchSize: 'medium',
+        halfSample: false
       },
-      function(error) {
-        // silent
+      numOfWorkers: 4,
+      frequency: 20,
+      decoder: {
+        readers: ['ean_reader'],
+        debug: {
+          drawBoundingBox: true,
+          showFrequency: false,
+          drawScanline: true,
+          showPattern: false
+        }
+      },
+      locate: true
+    }, function(err) {
+      if (err) {
+        resultHint.textContent = 'Error: ' + err;
+        return;
       }
-    ).catch(function(err) {
-      resultHint.textContent = 'Camera error: ' + err;
+      resultHint.textContent = 'Camera ready — point at barcode';
+      Quagga.start();
+    });
+
+    Quagga.onDetected(function(result) {
+      var code = result.codeResult.code;
+      var confidence = result.codeResult.decodedCodes
+        .filter(function(x) { return x.error !== undefined; })
+        .reduce(function(acc, x) { return acc + x.error; }, 0);
+      // only accept high confidence reads
+      if (confidence < 0.15) {
+        onDetected(code);
+      }
     });
   </script>
 </body>
