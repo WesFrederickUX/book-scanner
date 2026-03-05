@@ -463,6 +463,9 @@
 
     // ── VIEW SWITCHING ─────────────────────────────────────
     function showInventory() {
+      inventoryData = [];
+      filteredData = [];
+      document.getElementById('inv-list').innerHTML = '<div id="inv-loading">Loading inventory...</div>';
       document.getElementById('scanner-view').classList.remove('active');
       document.getElementById('inventory-view').classList.add('active');
       loadInventory();
