@@ -349,7 +349,7 @@
 
     <button id="stop-btn" onclick="stopScanner()">✕ Stop Scanning</button>
 
-    <div id="result-area">
+    <div id="result-area" onclick="openLastScanned()" style="cursor:pointer">
       <div id="result-label">Last Scanned</div>
       <div id="result-code">—</div>
       <div id="result-hint">Tap the button above to start scanning</div>
@@ -918,6 +918,16 @@ function adjustQty(delta) {
       clearTimeout(toastTimer);
       toastTimer = setTimeout(function() { el.className = ''; }, 2500);
     }
-  </script>
+  
+  function openLastScanned() {
+    if (!lastCode) return;
+    modalSource = 'scanner';
+    if (db[lastCode]) { openModal(lastCode, db[lastCode]); return; }
+    fetch(SCRIPT_URL + '?action=lookup&isbn=' + encodeURIComponent(lastCode) + '&t=' + Date.now())
+      .then(function(r) { return r.json(); })
+      .then(function(data) { if (data.found) db[lastCode] = data; openModal(lastCode, data.found ? data : null); })
+      .catch(function() { openModal(lastCode, null); });
+  }
+</script>
 </body>
 </html>
