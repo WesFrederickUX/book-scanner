@@ -480,7 +480,7 @@
     function loadInventory() {
       document.getElementById('inv-loading').style.display = 'block';
       document.getElementById('inv-list').innerHTML = '<div id="inv-loading">Loading inventory...</div>';
-      fetch(SCRIPT_URL + '?action=all')
+      fetch(SCRIPT_URL + '?action=all&t=' + Date.now())
         .then(function(r) { return r.json(); })
         .then(function(data) {
           inventoryData = data.items || [];
@@ -657,7 +657,7 @@
 
       if (db[code]) { openModal(code, db[code]); return; }
 
-      fetch(SCRIPT_URL + '?action=lookup&isbn=' + encodeURIComponent(code))
+      fetch(SCRIPT_URL + '?action=lookup&isbn=' + encodeURIComponent(code) + '&t=' + Date.now())
         .then(function(r) { return r.json(); })
         .then(function(data) {
           if (data.found) db[code] = data;
