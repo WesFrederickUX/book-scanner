@@ -539,10 +539,38 @@ function showInventory() {
         scannerRunning = true;
         Quagga.start();
       });
-      Quagga.onDetected(function(result) {
-        var code = result.codeResult.code;
-        if (code) onDetected(code);
-      });
+var pendingCode = '';
+var pendingCount = 0;
+var REQUIRED_CONFIRMATIONS = 2;
+var MIN_CONFIDENCE = 0.75;
+
+Quagga.onDetected(function(result) {
+  var code = result.codeResult.code;
+  var confidence = result.codeResult.decodedCodes
+    .filter(function(c) { return c.error !== undefined; })
+    .reduce(function(sum, c) { return sum + (1 - c.error); }, 0) /
+    result.codeResult.decodedCodes.filter(function(c) { return c.error !== undefined; }).length;
+
+  // Must be 13 digits and start with 97
+  if (!code || !/^97\d{11}$/.test(code)) return;
+
+  // Must meet confidence threshold
+  if (confidence < MIN_CONFIDENCE) return;
+
+  // Must be confirmed multiple times consecutively
+  if (code === pendingCode) {
+    pendingCount++;
+  } else {
+    pendingCode = code;
+    pendingCount = 1;
+  }
+
+  if (pendingCount >= REQUIRED_CONFIRMATIONS) {
+    pendingCode = '';
+    pendingCount = 0;
+    onDetected(code);
+  }
+});
     }
 
     function stopScanner() {
