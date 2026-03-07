@@ -358,14 +358,32 @@
     }
 
     // ── VIEW SWITCHING ────────────────────────────────────
-    function showInventory() {
+function showInventory() {
       window.location.hash = 'inventory';
       inventoryData = Object.values(db);
       filteredData = inventoryData.slice();
-      document.getElementById('inv-list').innerHTML = '<div id="inv-loading">Loading inventory...</div>';
       document.getElementById('scanner-view').classList.remove('active');
       document.getElementById('inventory-view').classList.add('active');
-      loadInventory();
+      renderInventory();
+      // silent background refresh to catch any changes from others
+      fetch(SCRIPT_URL + '?action=all&t=' + Date.now())
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var fresh = data.items || [];
+          db = {};
+          masterItems = [];
+          fresh.forEach(function(item) {
+            db[String(item.isbn)] = item;
+            var isMaster = item.isMaster === true || item.isMaster === 'true' || item.isMaster === 'TRUE';
+            if (isMaster) masterItems.push({ isbn: String(item.isbn), title: item.title });
+          });
+          cacheTime = Date.now();
+          inventoryData = fresh;
+          filteredData = fresh.slice();
+          setCacheStatus('✓ Ready · ' + fresh.length + ' books');
+          renderInventory();
+        })
+        .catch(function() {});
     }
 
     function showScanner() {
