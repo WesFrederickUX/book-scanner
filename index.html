@@ -82,24 +82,25 @@
     /* ── MODAL ── */
     #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: flex-end; justify-content: center; }
     #modal-overlay.show { display: flex; }
-    #modal { background: var(--mid); border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; padding: 24px 20px 32px; }
-    #modal-title { font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--orange); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+    #modal { background: var(--mid); border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; padding: 16px 20px 24px; }
+    #modal-title { font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--orange); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
     #modal-badge { font-size: 0.7rem; padding: 3px 10px; border-radius: 20px; font-weight: 700; }
     #modal-badge.new { background: #1565c0; color: #fff; }
     #modal-badge.existing { background: #6a1b9a; color: #fff; }
-    .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
-    .form-group label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
-    .form-group input[type="text"], .form-group input[type="number"], .form-group select { padding: 11px 14px; font-size: 1rem; border: 2px solid #444; border-radius: 8px; background: var(--light); color: var(--text); }
+    .form-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+    .form-group label { display: none; }
+    .form-group input[type="text"], .form-group input[type="number"], .form-group select { padding: 9px 12px; font-size: 1rem; border: 2px solid #444; border-radius: 8px; background: var(--light); color: var(--text); }
+    .form-group input[type="text"]::placeholder,
+    .form-group input[type="number"]::placeholder { color: var(--muted); opacity: 1; }
     .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--blue); }
     .form-group input[readonly] { background: #222; color: var(--muted); }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
     .qty-row { display: flex; align-items: center; gap: 10px; }
     .qty-btn { width: 42px; height: 42px; border: none; border-radius: 8px; background: var(--light); color: var(--text); font-size: 1.4rem; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; touch-action: manipulation; }
     .qty-btn:active { background: #555; }
-    .qty-row input { flex: 1; padding: 11px 14px; font-size: 1rem; border: 2px solid #444; border-radius: 8px; background: var(--light); color: var(--text); text-align: center; }
+    .qty-row input { flex: 1; padding: 9px 12px; font-size: 1rem; border: 2px solid #444; border-radius: 8px; background: var(--light); color: var(--text); text-align: center; }
     .qty-row input:focus { outline: none; border-color: var(--blue); }
-    .toggle-row { display: flex; align-items: center; justify-content: space-between; background: var(--light); border-radius: 8px; padding: 12px 14px; }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; background: var(--light); border-radius: 8px; padding: 10px 12px; }
     .toggle-label { font-size: 0.95rem; }
     .toggle { position: relative; width: 48px; height: 26px; flex-shrink: 0; }
     .toggle input { display: none; }
@@ -112,7 +113,7 @@
     .master-tag { display: inline-flex; align-items: center; gap: 6px; background: #1a3a5c; border: 1px solid var(--blue); color: #90caf9; border-radius: 20px; padding: 5px 12px; font-size: 0.82rem; font-weight: 600; cursor: pointer; user-select: none; }
     .master-tag.selected { background: var(--blue); color: #fff; }
     .no-masters { font-size: 0.82rem; color: var(--muted); font-style: italic; }
-    .modal-actions { display: flex; gap: 12px; margin-top: 24px; }
+    .modal-actions { display: flex; gap: 12px; margin-top: 14px; }
     .btn { flex: 1; padding: 14px; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; border: none; border-radius: 10px; cursor: pointer; }
     .btn:active { opacity: 0.8; }
     .btn-save { background: var(--green); color: #fff; }
@@ -212,43 +213,43 @@
       </div>
       <div class="form-group">
         <label>ISBN / Barcode</label>
-        <input type="text" id="f-isbn" readonly/>
+        <input type="text" id="f-isbn" readonly placeholder="ISBN / Barcode"/>
       </div>
       <div class="form-group">
         <label>SKU</label>
-        <input type="text" id="f-sku"/>
+        <input type="text" id="f-sku" placeholder="SKU"/>
       </div>
       <div class="form-group">
         <label>Title</label>
-        <input type="text" id="f-title" placeholder="Enter book title..."/>
+        <input type="text" id="f-title" placeholder="Title"/>
       </div>
       <div class="form-group">
         <label>Quantity on Hand</label>
         <div class="qty-row">
           <button class="qty-btn" onclick="adjustQty(-1)">−</button>
-          <input type="number" id="f-qty" value="0" min="0" oninput="onQtyDirectChange()"/>
+          <input type="number" id="f-qty" value="0" min="0" placeholder="Qty" oninput="onQtyDirectChange()"/>
           <button class="qty-btn" onclick="adjustQty(1)">+</button>
         </div>
       </div>
       <div class="form-group">
         <label>Loose Count</label>
-        <input type="number" id="f-loose" value="" min="0" inputmode="numeric" oninput="onLooseChange()"/>
+        <input type="number" id="f-loose" value="" min="0" inputmode="numeric" placeholder="Loose Count" oninput="onLooseChange()"/>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label>Boxes</label>
-          <input type="number" id="f-boxes" value="" min="0" inputmode="numeric" oninput="onBoxFieldChange()"/>
+          <input type="number" id="f-boxes" value="" min="0" inputmode="numeric" placeholder="Boxes" oninput="onBoxFieldChange()"/>
         </div>
         <div class="form-group">
           <label>Box Count</label>
-          <input type="number" id="f-boxcount" value="" min="0" inputmode="numeric" oninput="onBoxFieldChange()"/>
+          <input type="number" id="f-boxcount" value="" min="0" inputmode="numeric" placeholder="Box Count" oninput="onBoxFieldChange()"/>
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label>Bookcase</label>
           <select id="f-bookcase">
-            <option value="">— Select —</option>
+            <option value="">— Bookcase —</option>
             <option value="Corwin">Corwin</option>
             <option value="Corwin2">Corwin2</option>
             <option value="Corwin3">Corwin3</option>
@@ -264,7 +265,7 @@
         </div>
         <div class="form-group">
           <label>Shelf</label>
-          <input type="text" id="f-shelf" placeholder="e.g. 3" inputmode="numeric" pattern="[0-9]*"/>
+          <input type="text" id="f-shelf" placeholder="Shelf" inputmode="numeric" pattern="[0-9]*"/>
         </div>
       </div>
       <div class="form-group">
@@ -294,7 +295,7 @@
     var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby35cKeHOZhbmW-v1AiVceQArzPhStrfa3XG_5kfVubYWYCYv9gMPprFiM2-zrcvphm/exec';
     var SHEET_URL = 'https://docs.google.com/spreadsheets/d/1at5qF8A5RpxlCQO84euUoPLt6FX-p8REWF-q0FkvH3I/edit?gid=0';
 
-    var CACHE_TTL = 5 * 60 * 1000; // 5 minutes in ms
+    var CACHE_TTL = 5 * 60 * 1000;
 
     var lastCode = '';
     var lastTime = 0;
@@ -302,8 +303,8 @@
     var lastItem = null;
     var currentISBN = '';
     var selectedMasters = [];
-    var db = {};           // isbn -> item, populated from background cache load
-    var cacheTime = 0;     // timestamp of last full cache load
+    var db = {};
+    var cacheTime = 0;
     var masterItems = [];
     var scannerRunning = false;
     var inventoryData = [];
@@ -313,13 +314,18 @@
     var modalSource = 'scanner';
     var cacheRefreshTimer = null;
 
+    // ── SCANNER CONFIRMATION STATE ─────────────────────────
+    var pendingCode = '';
+    var pendingCount = 0;
+    var REQUIRED_CONFIRMATIONS = 2;
+    var MIN_CONFIDENCE = 0.75;
+
     // ── CACHE ─────────────────────────────────────────────
     function loadCache(silent) {
       fetch(SCRIPT_URL + '?action=all&t=' + Date.now())
         .then(function(r) { return r.json(); })
         .then(function(data) {
           var items = data.items || [];
-          // rebuild db from fresh server data
           db = {};
           masterItems = [];
           items.forEach(function(item) {
@@ -329,13 +335,11 @@
           });
           cacheTime = Date.now();
           setCacheStatus('✓ Ready · ' + items.length + ' books');
-          // schedule next background refresh
           clearTimeout(cacheRefreshTimer);
           cacheRefreshTimer = setTimeout(function() { loadCache(true); }, CACHE_TTL);
         })
         .catch(function() {
           setCacheStatus('⚠ Offline — scan may be slow');
-          // retry in 30 seconds if failed
           clearTimeout(cacheRefreshTimer);
           cacheRefreshTimer = setTimeout(function() { loadCache(true); }, 30000);
         });
@@ -347,10 +351,8 @@
     }
 
     // ── STARTUP ───────────────────────────────────────────
-    // kick off background cache load immediately
     loadCache(false);
 
-    // restore inventory view if page reloaded while on it
     if (window.location.hash === '#inventory') {
       document.getElementById('scanner-view').classList.remove('active');
       document.getElementById('inventory-view').classList.add('active');
@@ -358,14 +360,15 @@
     }
 
     // ── VIEW SWITCHING ────────────────────────────────────
-function showInventory() {
+    function showInventory() {
+      // Always kill the camera before navigating away
+      stopScanner();
       window.location.hash = 'inventory';
       inventoryData = Object.values(db);
       filteredData = inventoryData.slice();
       document.getElementById('scanner-view').classList.remove('active');
       document.getElementById('inventory-view').classList.add('active');
       renderInventory();
-      // silent background refresh to catch any changes from others
       fetch(SCRIPT_URL + '?action=all&t=' + Date.now())
         .then(function(r) { return r.json(); })
         .then(function(data) {
@@ -399,7 +402,6 @@ function showInventory() {
         .then(function(r) { return r.json(); })
         .then(function(data) {
           inventoryData = data.items || [];
-          // also refresh db cache from this fresh fetch
           db = {};
           masterItems = [];
           inventoryData.forEach(function(item) {
@@ -523,6 +525,8 @@ function showInventory() {
       document.getElementById('stop-btn').style.display = 'block';
       document.getElementById('result-hint').textContent = 'Point camera at a barcode';
       scannerRunning = false;
+      pendingCode = '';
+      pendingCount = 0;
       Quagga.init({
         inputStream: {
           name: 'Live', type: 'LiveStream',
@@ -531,7 +535,8 @@ function showInventory() {
           area: { top: '20%', right: '10%', left: '10%', bottom: '20%' }
         },
         locator: { patchSize: 'medium', halfSample: false },
-        numOfWorkers: 2, frequency: 10,
+        numOfWorkers: 2,
+        frequency: 10,
         decoder: { readers: ['ean_reader'], debug: { drawBoundingBox: true, showFrequency: false, drawScanline: true, showPattern: false } },
         locate: true
       }, function(err) {
@@ -539,44 +544,41 @@ function showInventory() {
         scannerRunning = true;
         Quagga.start();
       });
-var pendingCode = '';
-var pendingCount = 0;
-var REQUIRED_CONFIRMATIONS = 2;
-var MIN_CONFIDENCE = 0.75;
+      Quagga.onDetected(function(result) {
+        var code = result.codeResult.code;
 
-Quagga.onDetected(function(result) {
-  var code = result.codeResult.code;
-  var confidence = result.codeResult.decodedCodes
-    .filter(function(c) { return c.error !== undefined; })
-    .reduce(function(sum, c) { return sum + (1 - c.error); }, 0) /
-    result.codeResult.decodedCodes.filter(function(c) { return c.error !== undefined; }).length;
+        // Calculate confidence score
+        var decodedCodes = result.codeResult.decodedCodes.filter(function(c) { return c.error !== undefined; });
+        var confidence = decodedCodes.length > 0
+          ? decodedCodes.reduce(function(sum, c) { return sum + (1 - c.error); }, 0) / decodedCodes.length
+          : 0;
 
-  // Must be 13 digits and start with 97
-  if (!code || !/^97\d{11}$/.test(code)) return;
+        // Must be exactly 13 digits starting with 97 (covers both 978 and 979)
+        if (!code || !/^97\d{11}$/.test(code)) return;
 
-  // Must meet confidence threshold
-  if (confidence < MIN_CONFIDENCE) return;
+        // Must meet confidence threshold
+        if (confidence < MIN_CONFIDENCE) return;
 
-  // Must be confirmed multiple times consecutively
-  if (code === pendingCode) {
-    pendingCount++;
-  } else {
-    pendingCode = code;
-    pendingCount = 1;
-  }
+        // Must be confirmed multiple times consecutively to avoid misreads
+        if (code === pendingCode) {
+          pendingCount++;
+        } else {
+          pendingCode = code;
+          pendingCount = 1;
+        }
 
-  if (pendingCount >= REQUIRED_CONFIRMATIONS) {
-    pendingCode = '';
-    pendingCount = 0;
-    onDetected(code);
-  }
-});
+        if (pendingCount >= REQUIRED_CONFIRMATIONS) {
+          pendingCode = '';
+          pendingCount = 0;
+          onDetected(code);
+        }
+      });
     }
 
     function stopScanner() {
       if (scannerRunning) {
         Quagga.stop();
-        // Explicitly kill the camera stream to release hardware and save battery
+        // Explicitly release camera hardware to save battery
         var video = document.getElementById('video');
         if (video && video.srcObject) {
           video.srcObject.getTracks().forEach(function(track) { track.stop(); });
@@ -584,6 +586,8 @@ Quagga.onDetected(function(result) {
         }
       }
       scannerRunning = false;
+      pendingCode = '';
+      pendingCount = 0;
       document.getElementById('scanner-container').style.display = 'none';
       document.getElementById('stop-btn').style.display = 'none';
       document.getElementById('scan-btn-area').style.display = 'flex';
@@ -610,18 +614,15 @@ Quagga.onDetected(function(result) {
       lastISBN = code;
       document.getElementById('result-code').textContent = code;
 
-      // check cache first — opens modal instantly if found
       var cached = db[String(code)];
       if (cached) {
         lastItem = cached;
         document.getElementById('result-hint').textContent = 'Book found — tap to edit';
         openModal(code, cached);
-        // trigger a background refresh if cache is stale
         if (now - cacheTime > CACHE_TTL) loadCache(true);
         return;
       }
 
-      // not in cache — fall back to live lookup
       lastItem = null;
       document.getElementById('result-hint').textContent = 'Looking up...';
       fetch(SCRIPT_URL + '?action=lookup&isbn=' + encodeURIComponent(code) + '&t=' + Date.now())
@@ -735,11 +736,9 @@ Quagga.onDetected(function(result) {
         masters: selectedMasters.slice()
       };
 
-      // update local cache immediately
       db[String(isbn)] = item;
       lastItem = item;
 
-      // update masterItems list
       if (item.isMaster) {
         var exists = masterItems.some(function(m) { return m.isbn === isbn; });
         if (!exists) masterItems.push({ isbn: isbn, title: item.title });
@@ -747,7 +746,6 @@ Quagga.onDetected(function(result) {
         masterItems = masterItems.filter(function(m) { return m.isbn !== isbn; });
       }
 
-      // update inventoryData if loaded
       var found = false;
       for (var i = 0; i < inventoryData.length; i++) {
         if (String(inventoryData[i].isbn) === String(isbn)) { inventoryData[i] = item; found = true; break; }
@@ -756,7 +754,6 @@ Quagga.onDetected(function(result) {
 
       showToast('Saving...', '');
 
-      // send to server immediately
       fetch(SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
