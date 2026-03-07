@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -31,6 +30,7 @@
     #scan-btn { width: 100px; height: 100px; border-radius: 50%; border: none; background: var(--blue); color: #fff; font-size: 2.4rem; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(21,101,192,0.5); }
     #scan-btn:active { transform: scale(0.95); }
     #scan-btn-label { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); }
+    #cache-status { font-size: 0.7rem; color: #444; margin-top: 4px; letter-spacing: 1px; }
     #scanner-container { width: 100%; max-width: 480px; position: relative; background: #000; border-radius: var(--radius); overflow: hidden; border: 3px solid var(--blue); max-height: 340px; display: none; }
     #scanner-container video { width: 100%; height: 340px; object-fit: cover; display: block; }
     #scanner-container canvas.drawingBuffer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
@@ -134,6 +134,7 @@
     <div id="scan-btn-area">
       <button id="scan-btn" onclick="startScanner()">📷</button>
       <div id="scan-btn-label">Tap to Scan</div>
+      <div id="cache-status">Loading inventory...</div>
     </div>
 
     <div id="scanner-container">
@@ -292,13 +293,17 @@
   <script>
     var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby35cKeHOZhbmW-v1AiVceQArzPhStrfa3XG_5kfVubYWYCYv9gMPprFiM2-zrcvphm/exec';
     var SHEET_URL = 'https://docs.google.com/spreadsheets/d/1at5qF8A5RpxlCQO84euUoPLt6FX-p8REWF-q0FkvH3I/edit?gid=0';
+
+    var CACHE_TTL = 5 * 60 * 1000; // 5 minutes in ms
+
     var lastCode = '';
     var lastTime = 0;
     var lastISBN = '';
     var lastItem = null;
     var currentISBN = '';
     var selectedMasters = [];
-    var db = {};
+    var db = {};           // isbn -> item, populated from background cache load
+    var cacheTime = 0;     // timestamp of last full cache load
     var masterItems = [];
     var scannerRunning = false;
     var inventoryData = [];
@@ -306,6 +311,44 @@
     var sortField = 'title';
     var sortAsc = true;
     var modalSource = 'scanner';
+    var cacheRefreshTimer = null;
+
+    // ── CACHE ─────────────────────────────────────────────
+    function loadCache(silent) {
+      fetch(SCRIPT_URL + '?action=all&t=' + Date.now())
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var items = data.items || [];
+          // rebuild db from fresh server data
+          db = {};
+          masterItems = [];
+          items.forEach(function(item) {
+            db[String(item.isbn)] = item;
+            var isMaster = item.isMaster === true || item.isMaster === 'true' || item.isMaster === 'TRUE';
+            if (isMaster) masterItems.push({ isbn: String(item.isbn), title: item.title });
+          });
+          cacheTime = Date.now();
+          setCacheStatus('✓ Ready · ' + items.length + ' books');
+          // schedule next background refresh
+          clearTimeout(cacheRefreshTimer);
+          cacheRefreshTimer = setTimeout(function() { loadCache(true); }, CACHE_TTL);
+        })
+        .catch(function() {
+          setCacheStatus('⚠ Offline — scan may be slow');
+          // retry in 30 seconds if failed
+          clearTimeout(cacheRefreshTimer);
+          cacheRefreshTimer = setTimeout(function() { loadCache(true); }, 30000);
+        });
+    }
+
+    function setCacheStatus(msg) {
+      var el = document.getElementById('cache-status');
+      if (el) el.textContent = msg;
+    }
+
+    // ── STARTUP ───────────────────────────────────────────
+    // kick off background cache load immediately
+    loadCache(false);
 
     // restore inventory view if page reloaded while on it
     if (window.location.hash === '#inventory') {
@@ -314,17 +357,11 @@
       loadInventory();
     }
 
-    // load masters on startup
-    fetch(SCRIPT_URL + '?action=masters&t=' + Date.now())
-      .then(function(r) { return r.json(); })
-      .then(function(data) { masterItems = data.masters || []; })
-      .catch(function() {});
-
     // ── VIEW SWITCHING ────────────────────────────────────
     function showInventory() {
       window.location.hash = 'inventory';
-      inventoryData = [];
-      filteredData = [];
+      inventoryData = Object.values(db);
+      filteredData = inventoryData.slice();
       document.getElementById('inv-list').innerHTML = '<div id="inv-loading">Loading inventory...</div>';
       document.getElementById('scanner-view').classList.remove('active');
       document.getElementById('inventory-view').classList.add('active');
@@ -344,6 +381,16 @@
         .then(function(r) { return r.json(); })
         .then(function(data) {
           inventoryData = data.items || [];
+          // also refresh db cache from this fresh fetch
+          db = {};
+          masterItems = [];
+          inventoryData.forEach(function(item) {
+            db[String(item.isbn)] = item;
+            var isMaster = item.isMaster === true || item.isMaster === 'true' || item.isMaster === 'TRUE';
+            if (isMaster) masterItems.push({ isbn: String(item.isbn), title: item.title });
+          });
+          cacheTime = Date.now();
+          setCacheStatus('✓ Ready · ' + inventoryData.length + ' books');
           filteredData = inventoryData.slice();
           renderInventory();
         })
@@ -418,9 +465,8 @@
     }
 
     function getMasterTitle(isbn) {
-      for (var i = 0; i < inventoryData.length; i++) {
-        if (String(inventoryData[i].isbn) === String(isbn)) return inventoryData[i].title || isbn;
-      }
+      var item = db[String(isbn)];
+      if (item) return item.title || isbn;
       for (var j = 0; j < masterItems.length; j++) {
         if (String(masterItems[j].isbn) === String(isbn)) return masterItems[j].title || isbn;
       }
@@ -444,10 +490,7 @@
 
     function openModalFromInventory(isbn) {
       modalSource = 'inventory';
-      var item = null;
-      for (var i = 0; i < inventoryData.length; i++) {
-        if (String(inventoryData[i].isbn) === String(isbn)) { item = inventoryData[i]; break; }
-      }
+      var item = db[String(isbn)] || null;
       openModal(isbn, item);
     }
 
@@ -511,15 +554,27 @@
       stopScanner();
       modalSource = 'scanner';
       lastISBN = code;
-      lastItem = null;
       document.getElementById('result-code').textContent = code;
+
+      // check cache first — opens modal instantly if found
+      var cached = db[String(code)];
+      if (cached) {
+        lastItem = cached;
+        document.getElementById('result-hint').textContent = 'Book found — tap to edit';
+        openModal(code, cached);
+        // trigger a background refresh if cache is stale
+        if (now - cacheTime > CACHE_TTL) loadCache(true);
+        return;
+      }
+
+      // not in cache — fall back to live lookup
+      lastItem = null;
       document.getElementById('result-hint').textContent = 'Looking up...';
-      if (db[code]) { lastItem = db[code]; openModal(code, db[code]); return; }
       fetch(SCRIPT_URL + '?action=lookup&isbn=' + encodeURIComponent(code) + '&t=' + Date.now())
         .then(function(r) { return r.json(); })
         .then(function(data) {
           var item = data.found ? data : null;
-          if (item) db[code] = item;
+          if (item) db[String(code)] = item;
           lastItem = item;
           document.getElementById('result-hint').textContent = item ? 'Book found — tap to edit' : 'New book — tap to add';
           openModal(code, item);
@@ -564,8 +619,7 @@
     }
 
     function toggleMaster() {
-      var isMaster = document.getElementById('f-master').checked;
-      document.getElementById('masters-section').style.display = isMaster ? 'none' : 'block';
+      document.getElementById('masters-section').style.display = document.getElementById('f-master').checked ? 'none' : 'block';
     }
 
     function renderMastersList() {
@@ -591,7 +645,7 @@
       setTimeout(function() { btns.forEach(function(b) { b.style.pointerEvents = ''; }); }, 300);
     }
 
-    function onQtyDirectChange() { /* manual edit — no auto-calc needed */ }
+    function onQtyDirectChange() {}
 
     function onLooseChange() {
       var loose = parseInt(document.getElementById('f-loose').value) || 0;
@@ -611,7 +665,6 @@
       var isbn = document.getElementById('f-isbn').value.trim();
       var title = document.getElementById('f-title').value.trim();
       if (!title) { showToast('Title is required', 'error'); return; }
-      inventoryData = [];
 
       var item = {
         action: 'save',
@@ -628,9 +681,11 @@
         masters: selectedMasters.slice()
       };
 
-      db[isbn] = item;
+      // update local cache immediately
+      db[String(isbn)] = item;
       lastItem = item;
 
+      // update masterItems list
       if (item.isMaster) {
         var exists = masterItems.some(function(m) { return m.isbn === isbn; });
         if (!exists) masterItems.push({ isbn: isbn, title: item.title });
@@ -638,8 +693,16 @@
         masterItems = masterItems.filter(function(m) { return m.isbn !== isbn; });
       }
 
+      // update inventoryData if loaded
+      var found = false;
+      for (var i = 0; i < inventoryData.length; i++) {
+        if (String(inventoryData[i].isbn) === String(isbn)) { inventoryData[i] = item; found = true; break; }
+      }
+      if (!found) inventoryData.push(item);
+
       showToast('Saving...', '');
 
+      // send to server immediately
       fetch(SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
