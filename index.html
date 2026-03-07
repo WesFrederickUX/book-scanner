@@ -522,7 +522,7 @@ function showInventory() {
       document.getElementById('scanner-container').style.display = 'block';
       document.getElementById('stop-btn').style.display = 'block';
       document.getElementById('result-hint').textContent = 'Point camera at a barcode';
-      if (scannerRunning) { Quagga.start(); return; }
+      scannerRunning = false;
       Quagga.init({
         inputStream: {
           name: 'Live', type: 'LiveStream',
@@ -531,7 +531,7 @@ function showInventory() {
           area: { top: '20%', right: '10%', left: '10%', bottom: '20%' }
         },
         locator: { patchSize: 'medium', halfSample: false },
-        numOfWorkers: 4, frequency: 20,
+        numOfWorkers: 2, frequency: 10,
         decoder: { readers: ['ean_reader'], debug: { drawBoundingBox: true, showFrequency: false, drawScanline: true, showPattern: false } },
         locate: true
       }, function(err) {
@@ -574,7 +574,15 @@ Quagga.onDetected(function(result) {
     }
 
     function stopScanner() {
-      if (scannerRunning) Quagga.stop();
+      if (scannerRunning) {
+        Quagga.stop();
+        // Explicitly kill the camera stream to release hardware and save battery
+        var video = document.getElementById('video');
+        if (video && video.srcObject) {
+          video.srcObject.getTracks().forEach(function(track) { track.stop(); });
+          video.srcObject = null;
+        }
+      }
       scannerRunning = false;
       document.getElementById('scanner-container').style.display = 'none';
       document.getElementById('stop-btn').style.display = 'none';
