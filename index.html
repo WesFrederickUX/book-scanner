@@ -174,6 +174,7 @@
     </div>
 
     <button id="stop-btn" onclick="stopScanner()">✕ Stop Scanning</button>
+    <button id="flip-btn" onclick="flipCamera()" style="display:none;">🔄 Flip Camera</button>
 
     <div id="result-area" onclick="openLastScanned()">
       <div id="result-label">Last Scanned</div>
@@ -261,10 +262,12 @@
             <option value="Scholastic">Scholastic</option>
             <option value="Stenhouse">Stenhouse</option>
             <option value="Misc">Misc</option>
-            <option value="Kids1">Misc</option>
-            <option value="Kids2">Misc</option>
-            <option value="Kids3">Misc</option>
-            <option value="Kids4">Misc</option>
+            <option value="Kids1">Kids1</option>
+            <option value="Kids2">Kids2</option>
+            <option value="Kids3">Kids3</option>
+            <option value="Kids4">Kids4</option>
+            <option value="PrepTable">PrepTable</option>
+            <option value="PackagingShelf">PackagingShelf</option>
             <option value="Lowboy">Misc</option>
           </select>
         </div>
@@ -313,6 +316,7 @@
     var cacheTime = 0;
     var masterItems = [];
     var scannerRunning = false;
+    var facingMode = 'environment';
     var inventoryData = [];
     var filteredData = [];
     var sortField = 'title';
@@ -529,6 +533,7 @@
       document.getElementById('scan-btn-area').style.display = 'none';
       document.getElementById('scanner-container').style.display = 'block';
       document.getElementById('stop-btn').style.display = 'block';
+      document.getElementById('flip-btn').style.display = 'block';
       document.getElementById('result-hint').textContent = 'Point camera at a barcode';
       scannerRunning = false;
       pendingCode = '';
@@ -537,7 +542,7 @@
         inputStream: {
           name: 'Live', type: 'LiveStream',
           target: document.getElementById('scanner-container'),
-          constraints: { facingMode: 'environment', width: { min: 640, ideal: 1280, max: 1920 }, height: { min: 480, ideal: 720, max: 1080 } },
+          constraints: { facingMode: facingMode, width: { min: 640, ideal: 1280, max: 1920 }, height: { min: 480, ideal: 720, max: 1080 } },
           area: { top: '20%', right: '10%', left: '10%', bottom: '20%' }
         },
         locator: { patchSize: 'medium', halfSample: false },
@@ -596,6 +601,7 @@
       pendingCount = 0;
       document.getElementById('scanner-container').style.display = 'none';
       document.getElementById('stop-btn').style.display = 'none';
+      document.getElementById('flip-btn').style.display = 'none';
       document.getElementById('scan-btn-area').style.display = 'flex';
     }
 
@@ -783,6 +789,11 @@
       el.className = 'show' + (type ? ' ' + type : '');
       clearTimeout(toastTimer);
       toastTimer = setTimeout(function() { el.className = ''; }, 2500);
+    }
+    function flipCamera() {
+      facingMode = facingMode === 'environment' ? 'user' : 'environment';
+      stopScanner();
+      startScanner();
     }
   </script>
 </body>
