@@ -4,6 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <title>Book Scanner</title>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
@@ -292,6 +293,7 @@
   <div id="toast"></div>
 
   <script>
+    screen.orientation && screen.orientation.lock && screen.orientation.lock('portrait').catch(function(){});
     var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby35cKeHOZhbmW-v1AiVceQArzPhStrfa3XG_5kfVubYWYCYv9gMPprFiM2-zrcvphm/exec';
     var SHEET_URL = 'https://docs.google.com/spreadsheets/d/1at5qF8A5RpxlCQO84euUoPLt6FX-p8REWF-q0FkvH3I/edit?gid=0';
 
