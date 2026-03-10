@@ -182,6 +182,13 @@
       <div id="result-hint">Tap the button above to start scanning</div>
     </div>
 
+      <div id="manual-entry" style="width:100%;max-width:480px;margin-top:16px;display:flex;gap:10px;">
+        <input type="number" id="manual-isbn" inputmode="numeric" placeholder="Enter ISBN manually..."
+          style="flex:1;padding:14px;font-size:1rem;border:2px solid #444;border-radius:var(--radius);background:var(--mid);color:var(--text);"
+          onkeydown="if(event.key==='Enter')submitManualISBN()"/>
+        <button onclick="submitManualISBN()"
+          style="padding:14px 18px;border:none;border-radius:var(--radius);background:var(--blue);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;">Go</button>
+      </div>
     <button id="inventory-btn" onclick="showInventory()">📊 View Inventory</button>
   </div>
 
@@ -791,6 +798,13 @@
       facingMode = facingMode === 'environment' ? 'user' : 'environment';
       stopScanner();
       startScanner();
+    }
+    function submitManualISBN() {
+      var val = document.getElementById('manual-isbn').value.trim();
+      if (!val) { showToast('Enter an ISBN first', 'error'); return; }
+      if (!/^97\d{11}$/.test(val)) { showToast('ISBN must be 13 digits starting with 97', 'error'); return; }
+      document.getElementById('manual-isbn').value = '';
+      onDetected(val);
     }
   </script>
 </body>
