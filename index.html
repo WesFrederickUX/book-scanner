@@ -183,13 +183,13 @@
       <div id="result-hint">Tap the button above to start scanning</div>
     </div>
 
-      <div id="manual-entry" style="width:100%;max-width:480px;margin-top:16px;display:flex;gap:10px;">
-        <input type="number" id="manual-isbn" inputmode="numeric" placeholder="Enter ISBN manually..."
-          style="flex:1;padding:14px;font-size:1rem;border:2px solid #444;border-radius:var(--radius);background:var(--mid);color:var(--text);"
-          onkeydown="if(event.key==='Enter')submitManualISBN()"/>
-        <button onclick="submitManualISBN()"
-          style="padding:14px 18px;border:none;border-radius:var(--radius);background:var(--blue);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;">Go</button>
-      </div>
+    <div id="manual-entry" style="width:100%;max-width:480px;margin-top:16px;display:flex;gap:10px;">
+      <input type="number" id="manual-isbn" inputmode="numeric" placeholder="Enter ISBN manually..."
+        style="flex:1;padding:14px;font-size:1rem;border:2px solid #444;border-radius:var(--radius);background:var(--mid);color:var(--text);"
+        onkeydown="if(event.key==='Enter')submitManualISBN()"/>
+      <button onclick="submitManualISBN()"
+        style="padding:14px 18px;border:none;border-radius:var(--radius);background:var(--blue);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;">Go</button>
+    </div>
     <button id="inventory-btn" onclick="showInventory()">📊 View Inventory</button>
   </div>
 
@@ -235,15 +235,15 @@
       </div>
       <div class="form-group">
         <label>Quantity on Hand</label>
-        <div class="qty-row">
-          <button class="qty-btn" onclick="adjustQty(-1)">−</button>
-          <input type="number" id="f-qty" value="0" min="0" placeholder="Qty" oninput="onQtyDirectChange()"/>
-          <button class="qty-btn" onclick="adjustQty(1)">+</button>
-        </div>
+        <input type="number" id="f-qty" value="0" min="0" placeholder="Qty" oninput="onQtyDirectChange()"/>
       </div>
       <div class="form-group">
         <label>Loose Count</label>
-        <input type="number" id="f-loose" value="" min="0" inputmode="numeric" placeholder="Loose Count" oninput="onLooseChange()"/>
+        <div class="qty-row">
+          <button class="qty-btn" onclick="adjustLoose(-1)">−</button>
+          <input type="number" id="f-loose" value="" min="0" inputmode="numeric" placeholder="Loose Count" oninput="onLooseChange()"/>
+          <button class="qty-btn" onclick="adjustLoose(1)">+</button>
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -376,7 +376,6 @@
 
     // ── VIEW SWITCHING ────────────────────────────────────
     function showInventory() {
-      // Always kill the camera before navigating away
       stopScanner();
       window.location.hash = 'inventory';
       inventoryData = Object.values(db);
@@ -562,27 +561,18 @@
       });
       Quagga.onDetected(function(result) {
         var code = result.codeResult.code;
-
-        // Calculate confidence score
         var decodedCodes = result.codeResult.decodedCodes.filter(function(c) { return c.error !== undefined; });
         var confidence = decodedCodes.length > 0
           ? decodedCodes.reduce(function(sum, c) { return sum + (1 - c.error); }, 0) / decodedCodes.length
           : 0;
-
-        // Must be exactly 13 digits starting with 97 (covers both 978 and 979)
         if (!code || !/^97\d{11}$/.test(code)) return;
-
-        // Must meet confidence threshold
         if (confidence < MIN_CONFIDENCE) return;
-
-        // Must be confirmed multiple times consecutively to avoid misreads
         if (code === pendingCode) {
           pendingCount++;
         } else {
           pendingCode = code;
           pendingCount = 1;
         }
-
         if (pendingCount >= REQUIRED_CONFIRMATIONS) {
           pendingCode = '';
           pendingCount = 0;
@@ -594,7 +584,6 @@
     function stopScanner() {
       if (scannerRunning) {
         Quagga.stop();
-        // Explicitly release camera hardware to save battery
         var video = document.getElementById('video');
         if (video && video.srcObject) {
           video.srcObject.getTracks().forEach(function(track) { track.stop(); });
@@ -709,9 +698,10 @@
       renderMastersList();
     }
 
-    function adjustQty(delta) {
-      var input = document.getElementById('f-qty');
+    function adjustLoose(delta) {
+      var input = document.getElementById('f-loose');
       input.value = Math.max(0, (parseInt(input.value) || 0) + delta);
+      onLooseChange();
       var btns = document.querySelectorAll('.qty-btn');
       btns.forEach(function(b) { b.style.pointerEvents = 'none'; });
       setTimeout(function() { btns.forEach(function(b) { b.style.pointerEvents = ''; }); }, 300);
@@ -795,11 +785,13 @@
       clearTimeout(toastTimer);
       toastTimer = setTimeout(function() { el.className = ''; }, 2500);
     }
+
     function flipCamera() {
       facingMode = facingMode === 'environment' ? 'user' : 'environment';
       stopScanner();
       startScanner();
     }
+
     function submitManualISBN() {
       var val = document.getElementById('manual-isbn').value.trim();
       if (!val) { showToast('Enter an ISBN first', 'error'); return; }
