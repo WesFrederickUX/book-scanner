@@ -670,7 +670,7 @@
       toggleMaster();
       renderMastersList();
       document.getElementById('modal-overlay').classList.add('show');
-      setTimeout(function() { document.getElementById('f-title').focus(); }, 300);
+      setTimeout(function() { var t = document.getElementById('f-title'); t.focus(); t.setSelectionRange(0, 0); t.scrollLeft = 0; }, 300);   
     }
 
     function closeModal() {
