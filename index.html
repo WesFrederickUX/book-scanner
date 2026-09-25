@@ -519,7 +519,13 @@
     // No more full-catalog preload -- just confirm Supabase is reachable and
     // pull the (small) master-items list for the "Part of Master(s)" picker.
     loadMasterItems()
-      .then(function() { setCacheStatus('✓ Ready'); })
+      .then(function() {
+        // Objective proof a reload actually happened (e.g. after a pull-to-
+        // refresh) -- the time only changes if the page truly reloaded,
+        // independent of whether the pull-refresh spinner was visible.
+        var t = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+        setCacheStatus('✓ Ready · updated ' + t);
+      })
       .catch(function() { setCacheStatus('⚠ Offline — scan may not work'); });
 
     if (window.location.hash === '#inventory') {
