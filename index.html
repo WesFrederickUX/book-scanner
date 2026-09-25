@@ -77,6 +77,7 @@
     .inv-tag.master-badge { background: #3a2800; color: var(--orange); border: 1px solid var(--orange); }
     .inv-tag.master-link { background: #1a3a5c; color: #90caf9; border: 1px solid var(--blue); cursor: pointer; }
     .inv-tag.master-link:active { background: var(--blue); color: #fff; }
+    .inv-tag.not-stocked { background: #3a1a1a; color: #e08a8a; border: 1px solid #7a3a3a; }
     .inv-empty { text-align: center; color: var(--muted); padding: 40px 20px; font-size: 0.9rem; }
     #inv-loading { text-align: center; color: var(--muted); padding: 40px 20px; font-size: 0.9rem; }
 
@@ -305,10 +306,28 @@
 
   <script>
     screen.orientation && screen.orientation.lock && screen.orientation.lock('portrait').catch(function(){});
-    var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby35cKeHOZhbmW-v1AiVceQArzPhStrfa3XG_5kfVubYWYCYv9gMPprFiM2-zrcvphm/exec';
-    var SHEET_URL = 'https://docs.google.com/spreadsheets/d/1at5qF8A5RpxlCQO84euUoPLt6FX-p8REWF-q0FkvH3I/edit?gid=0';
 
-    var CACHE_TTL = 5 * 60 * 1000;
+    // Original data source, migrated to Supabase 2026-09-25 -- kept here for
+    // reference/audit purposes only, not used by the app anymore. The Sheet
+    // itself was never modified as part of the migration (only ever read via
+    // this Apps Script endpoint), so it remains available as a fallback.
+    // var SCRIPT_URL (Apps Script) = 'https://script.google.com/macros/s/AKfycby35cKeHOZhbmW-v1AiVceQArzPhStrfa3XG_5kfVubYWYCYv9gMPprFiM2-zrcvphm/exec';
+    // var SHEET_URL = 'https://docs.google.com/spreadsheets/d/1at5qF8A5RpxlCQO84euUoPLt6FX-p8REWF-q0FkvH3I/edit?gid=0';
+
+    var SUPABASE_URL = 'https://xrwxvrdiwvczulhlzswb.supabase.co';
+    var SUPABASE_KEY = 'sb_publishable_9DbEOHdpsPHu-XDNKRF3qA_MI3r3EWU';
+    var SUPABASE_HEADERS = {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json'
+    };
+    // PostgREST (Supabase's REST API) caps rows per request regardless of any
+    // client Range request larger than this, per the project's own server-side
+    // "Max Rows" setting (confirmed via direct testing 2026-09-25: a request
+    // for 20,000 rows still only returned 1,000). Paginating in code, rather
+    // than relying on that dashboard setting being raised and staying raised
+    // as the catalog grows, so this keeps working regardless.
+    var SUPABASE_PAGE_SIZE = 1000;
 
     var lastCode = '';
     var lastTime = 0;
@@ -316,8 +335,7 @@
     var lastItem = null;
     var currentISBN = '';
     var selectedMasters = [];
-    var db = {};
-    var cacheTime = 0;
+    var db = {}; // session-level opportunistic cache only, not a full preload -- see onDetected()
     var masterItems = [];
     var scannerRunning = false;
     var facingMode = 'environment';
@@ -325,8 +343,8 @@
     var filteredData = [];
     var sortField = 'title';
     var sortAsc = true;
+    var searchDebounceTimer = null;
     var modalSource = 'scanner';
-    var cacheRefreshTimer = null;
 
     // ── SCANNER CONFIRMATION STATE ─────────────────────────
     var pendingCode = '';
@@ -334,29 +352,149 @@
     var REQUIRED_CONFIRMATIONS = 2;
     var MIN_CONFIDENCE = 0.75;
 
-    // ── CACHE ─────────────────────────────────────────────
-    function loadCache(silent) {
-      fetch(SCRIPT_URL + '?action=all&t=' + Date.now())
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          var items = data.items || [];
-          db = {};
-          masterItems = [];
-          items.forEach(function(item) {
-            db[String(item.isbn)] = item;
-            var isMaster = item.isMaster === true || item.isMaster === 'true' || item.isMaster === 'TRUE';
-            if (isMaster) masterItems.push({ isbn: String(item.isbn), title: item.title });
-          });
-          cacheTime = Date.now();
-          setCacheStatus('✓ Ready · ' + items.length + ' books');
-          clearTimeout(cacheRefreshTimer);
-          cacheRefreshTimer = setTimeout(function() { loadCache(true); }, CACHE_TTL);
+    // ── SUPABASE ADAPTERS ─────────────────────────────────
+    // Converts a Postgres row (snake_case) to the object shape the rest of
+    // this app already expects everywhere (camelCase) -- keeps every
+    // rendering/sorting/modal function below completely unchanged.
+    function rowFromSupabase(row) {
+      return {
+        isbn: row.isbn,
+        sku: row.sku,
+        title: row.title,
+        qty: row.qty,
+        looseCount: row.loose_count,
+        boxes: row.boxes,
+        boxCount: row.box_count,
+        bookcase: row.bookcase,
+        shelf: row.shelf,
+        isMaster: row.is_master,
+        masters: row.masters || []
+      };
+    }
+
+    function rowToSupabase(item) {
+      return {
+        isbn: String(item.isbn),
+        sku: item.sku || null,
+        title: item.title,
+        qty: item.qty,
+        loose_count: item.looseCount,
+        boxes: item.boxes,
+        box_count: item.boxCount,
+        // Empty string ("nothing selected/typed") is normalized to null here
+        // so it matches the migrated data's convention -- the View Inventory
+        // filter below relies on bookcase/shelf being genuinely null when
+        // unset, not an empty string.
+        bookcase: item.bookcase || null,
+        shelf: (item.shelf || '').trim() || null,
+        is_master: !!item.isMaster,
+        masters: item.masters || []
+      };
+    }
+
+    // Generic paginated GET against a Supabase table -- PostgREST caps rows
+    // per request at this project's configured "Max Rows" regardless of any
+    // larger Range request from the client (confirmed via direct testing
+    // 2026-09-25: requesting 20,000 rows still only returned 1,000). Looping
+    // with Range headers until a short page comes back handles this
+    // correctly regardless of what that setting is, so it keeps working as
+    // the catalog grows rather than depending on remembering to raise it.
+    function supabaseFetchAll(query) {
+      var results = [];
+      function fetchPage(offset) {
+        return fetch(SUPABASE_URL + '/rest/v1/books?' + query, {
+          headers: Object.assign({}, SUPABASE_HEADERS, {
+            'Range-Unit': 'items',
+            'Range': offset + '-' + (offset + SUPABASE_PAGE_SIZE - 1)
+          })
         })
-        .catch(function() {
-          setCacheStatus('⚠ Offline — scan may be slow');
-          clearTimeout(cacheRefreshTimer);
-          cacheRefreshTimer = setTimeout(function() { loadCache(true); }, 30000);
+          .then(function(r) { return r.json(); })
+          .then(function(page) {
+            results = results.concat(page);
+            if (page.length === SUPABASE_PAGE_SIZE) return fetchPage(offset + SUPABASE_PAGE_SIZE);
+            return results;
+          });
+      }
+      return fetchPage(0);
+    }
+
+    // Strip characters that are structurally significant to PostgREST's
+    // or=(...) filter grammar (grouping/quoting), rather than trying to
+    // fully escape them -- customer/title lookups never need them.
+    function escapeIlikeValue(v) {
+      return v.replace(/[,()"\\]/g, '');
+    }
+
+    // Full-catalog search, used only once the user has typed something --
+    // 2026-09-25: staff need to be able to find a book a customer is asking
+    // about even if it's not currently shelved (a "suppressed" row outside
+    // the View Inventory filter below), e.g. "we carried this a few years
+    // ago." Runs server-side against all ~19k rows rather than the ~1,100
+    // already loaded into inventoryData, capped at 200 matches.
+    function searchFullCatalog(rawQuery) {
+      var q = escapeIlikeValue(rawQuery.trim());
+      if (!q) return Promise.resolve([]);
+      var pattern = encodeURIComponent('"*' + q + '*"');
+      var fields = ['isbn', 'sku', 'title', 'bookcase', 'shelf'];
+      var filter = fields.map(function(f) { return f + '.ilike.' + pattern; }).join(',');
+      return fetch(SUPABASE_URL + '/rest/v1/books?select=*&or=(' + filter + ')&limit=200&order=title', {
+        headers: SUPABASE_HEADERS
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(rows) { return Array.isArray(rows) ? rows.map(rowFromSupabase) : []; });
+    }
+
+    // The exact "does this row belong in View Inventory" rule (2026-09-25,
+    // confirmed against real examples): bookcase set, OR shelf set, OR any
+    // of loose count / boxes / box count is a POSITIVE number. An explicit
+    // zero count with no location stays hidden (every migrated row already
+    // defaults qty to 0, so that alone can't be the trigger); a positive
+    // count with no location still shows, since that likely just means the
+    // location was never entered.
+    var INVENTORY_VISIBILITY_FILTER =
+      'or=(bookcase.not.is.null,shelf.not.is.null,loose_count.gt.0,boxes.gt.0,box_count.gt.0)';
+
+    function fetchFilteredInventory() {
+      return supabaseFetchAll('select=*&' + INVENTORY_VISIBILITY_FILTER)
+        .then(function(rows) { return rows.map(rowFromSupabase); });
+    }
+
+    // Client-side mirror of INVENTORY_VISIBILITY_FILTER, used to flag search
+    // results that only turned up via searchFullCatalog() -- rows already in
+    // inventoryData always satisfy this by construction, so it only ever
+    // marks the merged-in "suppressed" matches.
+    function isCurrentlyStocked(item) {
+      return !!(item.bookcase || (item.shelf && String(item.shelf).trim()) ||
+        Number(item.looseCount) > 0 || Number(item.boxes) > 0 || Number(item.boxCount) > 0);
+    }
+
+    function loadMasterItems() {
+      return fetch(SUPABASE_URL + '/rest/v1/books?select=isbn,title&is_master=eq.true', { headers: SUPABASE_HEADERS })
+        .then(function(r) { return r.json(); })
+        .then(function(rows) {
+          masterItems = rows.map(function(r) { return { isbn: String(r.isbn), title: r.title }; });
         });
+    }
+
+    // Live per-ISBN lookup -- with a real database this is fast enough to
+    // call directly on every scan instead of needing the whole ~19,000-book
+    // catalog preloaded into memory first (which is almost certainly why the
+    // old Apps Script version was slow/unreliable to even open).
+    function lookupBookByIsbn(isbn) {
+      return fetch(SUPABASE_URL + '/rest/v1/books?select=*&isbn=eq.' + encodeURIComponent(isbn), { headers: SUPABASE_HEADERS })
+        .then(function(r) { return r.json(); })
+        .then(function(rows) { return rows.length > 0 ? rowFromSupabase(rows[0]) : null; });
+    }
+
+    function saveBookToSupabase(item) {
+      return fetch(SUPABASE_URL + '/rest/v1/books', {
+        method: 'POST',
+        headers: Object.assign({}, SUPABASE_HEADERS, { 'Prefer': 'resolution=merge-duplicates' }),
+        body: JSON.stringify(rowToSupabase(item))
+      }).then(function(r) {
+        if (!r.ok) return r.text().then(function(t) { throw new Error(t); });
+        return true;
+      });
     }
 
     function setCacheStatus(msg) {
@@ -365,7 +503,11 @@
     }
 
     // ── STARTUP ───────────────────────────────────────────
-    loadCache(false);
+    // No more full-catalog preload -- just confirm Supabase is reachable and
+    // pull the (small) master-items list for the "Part of Master(s)" picker.
+    loadMasterItems()
+      .then(function() { setCacheStatus('✓ Ready'); })
+      .catch(function() { setCacheStatus('⚠ Offline — scan may not work'); });
 
     if (window.location.hash === '#inventory') {
       document.getElementById('scanner-view').classList.remove('active');
@@ -377,29 +519,9 @@
     function showInventory() {
       stopScanner();
       window.location.hash = 'inventory';
-      inventoryData = Object.values(db);
-      filteredData = inventoryData.slice();
       document.getElementById('scanner-view').classList.remove('active');
       document.getElementById('inventory-view').classList.add('active');
-      renderInventory();
-      fetch(SCRIPT_URL + '?action=all&t=' + Date.now())
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          var fresh = data.items || [];
-          db = {};
-          masterItems = [];
-          fresh.forEach(function(item) {
-            db[String(item.isbn)] = item;
-            var isMaster = item.isMaster === true || item.isMaster === 'true' || item.isMaster === 'TRUE';
-            if (isMaster) masterItems.push({ isbn: String(item.isbn), title: item.title });
-          });
-          cacheTime = Date.now();
-          inventoryData = fresh;
-          filteredData = fresh.slice();
-          setCacheStatus('✓ Ready · ' + fresh.length + ' books');
-          renderInventory();
-        })
-        .catch(function() {});
+      loadInventory();
     }
 
     function showScanner() {
@@ -411,19 +533,10 @@
     // ── INVENTORY ─────────────────────────────────────────
     function loadInventory() {
       document.getElementById('inv-list').innerHTML = '<div id="inv-loading">Loading inventory...</div>';
-      fetch(SCRIPT_URL + '?action=all&t=' + Date.now())
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          inventoryData = data.items || [];
-          db = {};
-          masterItems = [];
-          inventoryData.forEach(function(item) {
-            db[String(item.isbn)] = item;
-            var isMaster = item.isMaster === true || item.isMaster === 'true' || item.isMaster === 'TRUE';
-            if (isMaster) masterItems.push({ isbn: String(item.isbn), title: item.title });
-          });
-          cacheTime = Date.now();
-          setCacheStatus('✓ Ready · ' + inventoryData.length + ' books');
+      fetchFilteredInventory()
+        .then(function(rows) {
+          inventoryData = rows;
+          rows.forEach(function(item) { db[String(item.isbn)] = item; });
           filteredData = inventoryData.slice();
           renderInventory();
         })
@@ -459,12 +572,34 @@
     }
 
     function filterInventory() {
-      var q = document.getElementById('inv-search').value.toLowerCase().trim();
+      var raw = document.getElementById('inv-search').value.trim();
+      var q = raw.toLowerCase();
+      clearTimeout(searchDebounceTimer);
+
       filteredData = q ? inventoryData.filter(function(item) {
-        return [item.isbn, item.sku, item.title, item.bookcase, item.shelf, item.masters]
+        return [item.isbn, item.sku, item.title, item.bookcase, item.shelf, item.qty, item.masters]
           .some(function(v) { return String(v || '').toLowerCase().indexOf(q) > -1; });
       }) : inventoryData.slice();
       renderInventory();
+
+      // After a short pause, also check the full ~19k-row catalog for
+      // matches outside the currently-stocked set (e.g. a customer asking
+      // about a book we carried in the past but don't have located/counted
+      // right now) and merge in any not already shown.
+      if (raw.length >= 3) {
+        searchDebounceTimer = setTimeout(function() {
+          searchFullCatalog(raw).then(function(rows) {
+            var seen = {};
+            filteredData.forEach(function(item) { seen[String(item.isbn)] = true; });
+            var extra = rows.filter(function(item) { return !seen[String(item.isbn)]; });
+            if (extra.length > 0) {
+              extra.forEach(function(item) { db[String(item.isbn)] = item; });
+              filteredData = filteredData.concat(extra);
+              renderInventory();
+            }
+          }).catch(function() { /* local matches already shown; fail silently */ });
+        }, 400);
+      }
     }
 
     function renderInventory() {
@@ -480,6 +615,7 @@
         var isMaster = item.isMaster === true || item.isMaster === 'true' || item.isMaster === 'TRUE';
         var location = [item.bookcase, item.shelf].filter(Boolean).join(' · ') || '—';
         var tags = '';
+        if (!isCurrentlyStocked(item)) tags += '<span class="inv-tag not-stocked">Not currently in stock</span>';
         if (isMaster) tags += '<span class="inv-tag master-badge">⭐ Master</span>';
         if (!isMaster && item.masters && item.masters.length > 0) {
           for (var j = 0; j < item.masters.length; j++) {
@@ -508,6 +644,7 @@
 
     function jumpToMaster(isbn, event) {
       event.stopPropagation();
+      clearTimeout(searchDebounceTimer);
       document.getElementById('inv-search').value = '';
       filteredData = inventoryData.slice();
       renderInventory();
@@ -619,21 +756,24 @@
       lastISBN = code;
       document.getElementById('result-code').textContent = code;
 
+      // Session-level opportunistic cache only (populated by View Inventory
+      // and by earlier lookups this session) -- not a preloaded full catalog.
+      // A hit here just saves a redundant network round-trip for re-scanning
+      // something already seen; a miss falls through to a live lookup, which
+      // is fast enough on a real database not to need preloading ~19,000
+      // rows up front the way the old Apps Script version did.
       var cached = db[String(code)];
       if (cached) {
         lastItem = cached;
         document.getElementById('result-hint').textContent = 'Book found — tap to edit';
         openModal(code, cached);
-        if (now - cacheTime > CACHE_TTL) loadCache(true);
         return;
       }
 
       lastItem = null;
       document.getElementById('result-hint').textContent = 'Looking up...';
-      fetch(SCRIPT_URL + '?action=lookup&isbn=' + encodeURIComponent(code) + '&t=' + Date.now())
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          var item = data.found ? data : null;
+      lookupBookByIsbn(code)
+        .then(function(item) {
           if (item) db[String(code)] = item;
           lastItem = item;
           document.getElementById('result-hint').textContent = item ? 'Book found — tap to edit' : 'New book — tap to add';
@@ -728,7 +868,6 @@
       if (!title) { showToast('Title is required', 'error'); return; }
 
       var item = {
-        action: 'save',
         isbn: isbn,
         sku: document.getElementById('f-sku').value.trim() || isbn,
         title: title,
@@ -760,17 +899,9 @@
 
       showToast('Saving...', '');
 
-      fetch(SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(item)
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (data.success) { showToast('Saved!', 'success'); }
-        else { showToast('Save failed', 'error'); }
-      })
-      .catch(function() { showToast('Connection error', 'error'); });
+      saveBookToSupabase(item)
+        .then(function() { showToast('Saved!', 'success'); })
+        .catch(function() { showToast('Save failed', 'error'); });
 
       closeModal();
     }
