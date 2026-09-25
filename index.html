@@ -126,9 +126,22 @@
     #toast.show { transform: translateX(-50%) translateY(0); }
     #toast.success { background: var(--green); }
     #toast.error { background: #c62828; }
+
+    /* ── PULL TO REFRESH ── */
+    /* Standalone home-screen mode (apple-mobile-web-app-capable) has no
+       Safari chrome, so iOS's native pull-to-refresh isn't available --
+       this replaces it so a database update elsewhere can be picked up
+       without closing and reopening the app. */
+    #pull-refresh { position: fixed; top: 0; left: 0; right: 0; height: 60px; display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--dark); color: var(--muted); font-size: 0.85rem; font-weight: 600; transform: translateY(-60px); transition: transform 0.25s ease; z-index: 1000; pointer-events: none; }
+    #pull-refresh.dragging { transition: none; }
+    #pull-refresh .pr-icon { font-size: 1.1rem; display: inline-block; }
+    #pull-refresh .pr-icon.spin { animation: pr-spin 0.7s linear infinite; }
+    @keyframes pr-spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
+
+  <div id="pull-refresh"><span class="pr-icon" id="pr-icon">↓</span><span id="pr-text">Pull to refresh</span></div>
 
   <!-- ══ SCANNER VIEW ══ -->
   <div id="scanner-view" class="view active">
@@ -929,6 +942,66 @@
       document.getElementById('manual-isbn').value = '';
       onDetected(val);
     }
+
+    // ── PULL TO REFRESH ─────────────────────────────────────
+    (function() {
+      var indicator = document.getElementById('pull-refresh');
+      var icon = document.getElementById('pr-icon');
+      var text = document.getElementById('pr-text');
+      var THRESHOLD = 70;
+      var MAX_PULL = 100;
+      var startY = 0, lastDist = 0, pulling = false, refreshing = false;
+
+      function atTop() {
+        return (window.scrollY || document.documentElement.scrollTop || document.body.scrollTop) <= 0;
+      }
+
+      function blocked() {
+        // Don't hijack the gesture during an active scan or while the edit
+        // modal is open (a stray reload here would silently drop unsaved edits).
+        return refreshing || scannerRunning || document.getElementById('modal-overlay').classList.contains('show');
+      }
+
+      document.addEventListener('touchstart', function(e) {
+        if (blocked() || !atTop()) { pulling = false; return; }
+        startY = e.touches[0].clientY;
+        pulling = true;
+        indicator.classList.add('dragging');
+      }, { passive: true });
+
+      document.addEventListener('touchmove', function(e) {
+        if (!pulling || blocked()) return;
+        var dy = e.touches[0].clientY - startY;
+        if (dy <= 0 || !atTop()) {
+          pulling = false;
+          indicator.classList.remove('dragging');
+          indicator.style.transform = 'translateY(-60px)';
+          return;
+        }
+        lastDist = Math.min(dy * 0.5, MAX_PULL);
+        indicator.style.transform = 'translateY(' + (lastDist - 60) + 'px)';
+        var past = lastDist >= THRESHOLD;
+        icon.textContent = past ? '↑' : '↓';
+        text.textContent = past ? 'Release to refresh' : 'Pull to refresh';
+      }, { passive: true });
+
+      document.addEventListener('touchend', function() {
+        if (!pulling) return;
+        pulling = false;
+        indicator.classList.remove('dragging');
+        if (lastDist >= THRESHOLD && !refreshing) {
+          refreshing = true;
+          indicator.style.transform = 'translateY(0)';
+          icon.textContent = '⟳';
+          icon.classList.add('spin');
+          text.textContent = 'Refreshing...';
+          setTimeout(function() { location.reload(); }, 250);
+        } else {
+          indicator.style.transform = 'translateY(-60px)';
+        }
+        lastDist = 0;
+      });
+    })();
   </script>
 </body>
 </html>
